@@ -526,6 +526,52 @@ class My_account extends CI_Controller
         }
     }
 
+    /**
+     * Resolve city_id from posted city_id/city_name; create city if missing.
+     */
+    private function ensure_city($city_name, $city_id = 0)
+    {
+        $city_id = (int) $city_id;
+        $city_name = trim((string) $city_name);
+
+        if ($city_id > 0) {
+            $by_id = fetch_details('cities', ['id' => $city_id], 'id,name');
+            if (!empty($by_id[0]['id'])) {
+                return [
+                    'id' => (int) $by_id[0]['id'],
+                    'name' => $by_id[0]['name'],
+                ];
+            }
+        }
+
+        if ($city_name === '') {
+            return ['id' => 0, 'name' => ''];
+        }
+
+        $this->db->group_start();
+        $this->db->where('name', $city_name);
+        $this->db->or_where('LOWER(name) =', strtolower($city_name), false);
+        $this->db->group_end();
+        $by_name = $this->db->get('cities')->row_array();
+        if (!empty($by_name['id'])) {
+            return [
+                'id' => (int) $by_name['id'],
+                'name' => $by_name['name'],
+            ];
+        }
+
+        $this->Area_model->add_city([
+            'city_name' => $city_name,
+            'minimum_free_delivery_order_amount' => 500,
+            'delivery_charges' => 10,
+        ]);
+
+        return [
+            'id' => (int) $this->db->insert_id(),
+            'name' => $city_name,
+        ];
+    }
+
     private function resolve_city_name_from_id($city_id)
     {
         $city = fetch_details('cities', ['id' => (int) $city_id], 'name');
@@ -573,7 +619,8 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('alternate_mobile', 'Alternative Mobile', 'trim|numeric|xss_clean');
             $this->form_validation->set_rules('address', 'Address', 'trim|xss_clean|required');
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
-            $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
+            $this->form_validation->set_rules('city_name', 'City', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('city_id', 'City Id', 'trim|xss_clean|numeric');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
             $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required|in_list[United States]');
             $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
@@ -594,16 +641,17 @@ class My_account extends CI_Controller
                 $arr['type'] = 'home';
             }
             $arr['country'] = 'United States';
-            $arr['city_id'] = (int) $arr['city_id'];
-            if (!is_exist(['id' => $arr['city_id']], 'cities')) {
+            $city = $this->ensure_city($arr['city_name'] ?? '', $arr['city_id'] ?? 0);
+            if (empty($city['id'])) {
                 $this->response['error'] = true;
-                $this->response['message'] = 'Please select a valid city.';
+                $this->response['message'] = 'Please enter a valid city.';
                 $this->response['data'] = array();
                 print_r(json_encode($this->response));
                 return false;
             }
+            $arr['city_id'] = $city['id'];
+            $arr['city_name'] = $city['name'];
             $this->ensure_zipcode_for_city($arr['pincode'], $arr['city_id']);
-            $arr['city_name'] = $this->resolve_city_name_from_id($arr['city_id']);
             unset($arr['pincode_name']);
             $arr['user_id'] = $this->data['user']->id;
             $this->address_model->set_address($arr);
@@ -636,7 +684,8 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('alternate_mobile', 'Alternative Mobile', 'trim|numeric|xss_clean');
             $this->form_validation->set_rules('address', 'Address', 'trim|xss_clean|required');
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
-            $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
+            $this->form_validation->set_rules('city_name', 'City', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('city_id', 'City Id', 'trim|xss_clean|numeric');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
             $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required|in_list[United States]');
             $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
@@ -651,22 +700,23 @@ class My_account extends CI_Controller
                 print_r(json_encode($this->response));
                 return false;
             }
-            $_POST['city_id'] = (int) $_POST['city_id'];
             $_POST['country'] = 'United States';
-            if (!is_exist(['id' => $_POST['city_id']], 'cities')) {
+            $city = $this->ensure_city($_POST['city_name'] ?? '', $_POST['city_id'] ?? 0);
+            if (empty($city['id'])) {
                 $this->response['error'] = true;
-                $this->response['message'] = 'Please select a valid city.';
+                $this->response['message'] = 'Please enter a valid city.';
                 $this->response['csrfName'] = $this->security->get_csrf_token_name();
                 $this->response['csrfHash'] = $this->security->get_csrf_hash();
                 $this->response['data'] = array();
                 print_r(json_encode($this->response));
                 return false;
             }
+            $_POST['city_id'] = $city['id'];
+            $_POST['city_name'] = $city['name'];
             if (empty($_POST['type'])) {
                 $_POST['type'] = 'home';
             }
             $this->ensure_zipcode_for_city($_POST['pincode'], $_POST['city_id']);
-            $_POST['city_name'] = $this->resolve_city_name_from_id($_POST['city_id']);
             unset($_POST['pincode_name']);
             $this->address_model->set_address($_POST);
             $res = $this->address_model->get_address(null, $_POST['id'], true);

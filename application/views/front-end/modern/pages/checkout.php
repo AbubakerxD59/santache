@@ -127,45 +127,11 @@
 
                         <?php $shiprocket_settings = get_settings('shipping_method', true);
                         if (isset($shiprocket_settings['local_shipping_method']) && $shiprocket_settings['local_shipping_method'] == 1) { ?>
-                            <?php if ($cart[0]['type'] == 'digital_product') { ?>
-                                <input type="hidden" name="is_time_slots_enabled" id="is_time_slots_enabled" value="0">
-                            <?php } else { ?>
-                                <input type="hidden" name="is_time_slots_enabled" id="is_time_slots_enabled" value="<?= (isset($time_slot_config['is_time_slots_enabled']) && $time_slot_config['is_time_slots_enabled'] == 1) ? 1 : 0 ?>">
-                            <?php  } ?>   
+                            <input type="hidden" name="is_time_slots_enabled" id="is_time_slots_enabled" value="0">
                             <div class="input-group py-3 border-top">
                                 <input type="text" class="form-control" placeholder="Special Note for Order" name="order_note" id="order_note">
                             </div>
-                            <?php if (isset($time_slot_config['is_time_slots_enabled']) && $time_slot_config['is_time_slots_enabled'] == 1) {
-                                if($cart[0]['type'] != 'digital_product') {
-                            ?>
-
-                                <?php
-                                $shiprocket_settings =  get_settings('shipping_method', true); ?>
-                                <div class="delivary-time">
-                                    <h5 class="pb-2"><?= label('preferred_delivery_date_time', 'Preferred Delivery Date / Time') ?></h5>
-                                    <div class="input-group date-time-picker position-relative">
-                                        <div class="input-group-prepend">
-                                            <ion-icon name="calendar-outline"></ion-icon>
-                                        </div>
-                                        <input type="text" class="form-control ps-5" id="datepicker">
-                                        
-                                        <input type="hidden" id="start_date" class="form-control float-right">
-                                    </div>
-                                    <div class="mt-3 time-slot" id="time_slots">
-                                        <?php foreach ($time_slots as $row) { ?>
-
-                                            <div class="form-check">
-                                                <label class="form-check-label" for="<?= $row['id'] ?>">
-                                                    <input class="custom-control-input time-slot-inputs form-check-input" id="<?= $row['id'] ?>" name="delivery_time" type="radio" data-last_order_time="<?= $row['last_order_time'] ?>" value="<?= $row['title'] ?>">
-                                                    <?= $row['title'] ?>
-                                                </label>
-                                            </div>
-                                        <?php } ?>
-                                    </div>
-                                </div>
-                            <?php }
-                            }
-                        }
+                        <?php }
                             $settings = get_settings('system_settings', true);
                             ?>
 
@@ -709,15 +675,12 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_city" class="form-label"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
-                                <select class="form-control" id="checkout_city" name="city_id" required>
-                                    <option value=""><?= label('city', 'Select City') ?></option>
-                                    <?php if (!empty($cities)) {
-                                        foreach ($cities as $city) { ?>
-                                            <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                    <?php }
-                                    } ?>
-                                </select>
-                                <input type="hidden" name="city_name" id="checkout_city_name" value="" />
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control" id="checkout_city" name="city_name" autocomplete="off" required
+                                        placeholder="<?= label('city', 'City') ?>">
+                                    <div id="checkout-city-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
+                                <input type="hidden" name="city_id" id="checkout_city_id" value="" />
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_alternate_mobile" class="form-label"><?= label('alternate_mobile', 'Alternate Mobile') ?></label>
@@ -837,6 +800,9 @@ if (isset($payment_methods['midtrans_payment_mode'])) {
 </style>
 <script>
 window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JSON_UNESCAPED_UNICODE) ?>;
+window.ADDRESS_CITIES = <?= json_encode(array_map(function ($c) {
+    return ['id' => $c['id'], 'name' => $c['name']];
+}, !empty($cities) ? $cities : []), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <script src="<?= base_url('assets/front_end/zipcode-autocomplete.js') ?>"></script>
 <script src="<?= base_url('assets/front_end/modern/js/checkout.js') ?>"></script>

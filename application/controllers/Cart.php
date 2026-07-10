@@ -563,11 +563,6 @@ class Cart extends CI_Controller
 
             $this->form_validation->set_rules('latitude', 'Latitude', 'trim|numeric|xss_clean');
             $this->form_validation->set_rules('longitude', 'Longitude', 'trim|numeric|xss_clean');
-            $time_slot_config = get_settings('time_slot_config', true);
-            if (isset($time_slot_config['is_time_slots_enabled']) && ($time_slot_config['is_time_slots_enabled'] == 1 || $time_slot_config['is_time_slots_enabled'] == '1') && $_POST['product_type'] != 'digital_product' && $shipping_settings['local_shipping_method'] == 1) {
-                $this->form_validation->set_rules('delivery_date', 'Delivery Date', 'trim|required|xss_clean');
-                $this->form_validation->set_rules('delivery_time', 'Delivery time', 'trim|required|xss_clean');
-            }
         }
 
         if (isset($_POST['product_type']) && $_POST['product_type'] == 'digital_product' && $_POST['download_allowed'] == 0) {

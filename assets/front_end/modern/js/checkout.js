@@ -134,9 +134,12 @@ $(document).ready(function () {
     if (window.AddressZipcodeAutocomplete) {
       window.AddressZipcodeAutocomplete.bind({
         zipcodes: window.ADDRESS_ZIPCODES || [],
+        cities: window.ADDRESS_CITIES || [],
         zipInput: "#checkout_pincode",
-        citySelect: "#checkout_city",
-        suggestionsList: "#checkout-zipcode-suggestions",
+        cityInput: "#checkout_city",
+        cityIdInput: "#checkout_city_id",
+        zipSuggestionsList: "#checkout-zipcode-suggestions",
+        citySuggestionsList: "#checkout-city-suggestions",
       });
     } else {
       setTimeout(initCheckoutZipAutocomplete, 50);
@@ -649,7 +652,11 @@ $(document).ready(function () {
             location.reload();
           }
           if (eventName == "APP_CLOSED") {
-            $("#place_order_btn").attr("disabled", false).html("Place Order");
+            $("#place_order_btn")
+              .data("placing", false)
+              .prop("disabled", false)
+              .attr("disabled", false)
+              .html("Place Order");
           }
         },
         transactionStatus: function (data) {
@@ -679,16 +686,20 @@ $(document).ready(function () {
               contentType: false,
               beforeSend: function () {
                 $("#place_order_btn")
+                  .data("placing", true)
+                  .prop("disabled", true)
                   .attr("disabled", true)
                   .html("Please Wait...");
               },
               success: function (data) {
                 csrfName = data.csrfName;
                 csrfHash = data.csrfHash;
-                $("#place_order_btn")
-                  .attr("disabled", false)
-                  .html("Place Order");
                 if (data.error == false) {
+                  $("#place_order_btn")
+                    .data("placing", true)
+                    .prop("disabled", true)
+                    .attr("disabled", true)
+                    .html("Please Wait...");
                   Toast.fire({
                     icon: "success",
                     title: data.message,
@@ -697,6 +708,11 @@ $(document).ready(function () {
                     location.href = base_url + "payment/success";
                   }, 3000);
                 } else {
+                  $("#place_order_btn")
+                    .data("placing", false)
+                    .prop("disabled", false)
+                    .attr("disabled", false)
+                    .html("Place Order");
                   Toast.fire({
                     icon: "error",
                     title: data.message,
@@ -1018,6 +1034,7 @@ $(document).ready(function () {
   $(document).on("click", "#open-create-address-modal", function () {
     $("#checkout-create-address-form")[0].reset();
     $("#checkout_country").val("United States");
+    $("#checkout_city_id").val("");
     $("#checkout_type_home").prop("checked", true);
     const userName = ($("#username").val() || "").trim();
     const selectedMobile = ($("#address-mobile").text() || "").trim();
@@ -1215,10 +1232,10 @@ $(document).ready(function () {
   $("#checkout-create-address-form").on("submit", function (event) {
     event.preventDefault();
 
-    if (!$("#checkout_city").val()) {
+    if (!$("#checkout_city").val() || !$("#checkout_city").val().trim()) {
       Toast.fire({
         icon: "error",
-        title: "Please select a city.",
+        title: "Please enter a city.",
       });
       $("#checkout_city").focus();
       return false;
@@ -1533,6 +1550,18 @@ $(document).ready(function () {
   // })
   $("#checkout_form").on("submit", function (event) {
     event.preventDefault();
+    var $placeOrderBtn = $("#place_order_btn");
+    if ($placeOrderBtn.data("placing")) {
+      return false;
+    }
+    var btn_html = $placeOrderBtn.html();
+    $placeOrderBtn
+      .data("placing", true)
+      .prop("disabled", true)
+      .attr("disabled", true)
+      .html("Please Wait...");
+
+    setTimeout(function () {
     var type = $("#product_type").val();
     var fatoorah_order_id = "";
     var local_pick_up = $("input[name='local_pickup']:checked").val();
@@ -1551,21 +1580,6 @@ $(document).ready(function () {
     }
     var final_total = $("#final_total").text();
     final_total = final_total.replace(",", "");
-    var btn_html = $("#place_order_btn").html();
-    $("#place_order_btn").html("Place Order");
-    if (
-      $("#is_time_slots_enabled").val() == 1 &&
-      $('input[name="delivery_time"]').length > 0 &&
-      $('input[name="delivery_time"]').is(":checked") == false &&
-      $("#product_type").val() != "digital_product"
-    ) {
-      Toast.fire({
-        icon: "error",
-        title: "Please select Delivery Date & Time.",
-      });
-      $("#place_order_btn").attr("disabled", false).html(btn_html);
-      return false;
-    }
     var address_id = $("#address_id").val();
     if (local_pick_up == 0 && type != "digital_product") {
       if (address_id == null || address_id == undefined || address_id == "") {
@@ -1573,11 +1587,20 @@ $(document).ready(function () {
           icon: "error",
           title: "Please add/choose address.",
         });
-        $("#place_order_btn").attr("disabled", false).html(btn_html);
+        $placeOrderBtn
+          .data("placing", false)
+          .prop("disabled", false)
+          .attr("disabled", false)
+          .html(btn_html);
         return false;
       }
     }
     if (documents === "") {
+      $placeOrderBtn
+        .data("placing", false)
+        .prop("disabled", false)
+        .attr("disabled", false)
+        .html(btn_html);
       return Toast.fire({
         icon: "error",
         title: "Please select an Document.",
@@ -1739,12 +1762,21 @@ $(document).ready(function () {
           if (data.error == false) {
             $("#instamojo_order_id").val(data.order_id);
             var instamojo_payment = instamojo_setup(data.redirect_url);
-            $("#place_order_btn").attr("disabled", false).html("Place Order");
+            $("#place_order_btn")
+              .data("placing", false)
+              .prop("disabled", false)
+              .attr("disabled", false)
+              .html("Place Order");
           } else {
             Toast.fire({
               icon: "error",
               title: data.message,
             });
+            $("#place_order_btn")
+              .data("placing", false)
+              .prop("disabled", false)
+              .attr("disabled", false)
+              .html("Place Order");
           }
         },
         "json",
@@ -1947,6 +1979,7 @@ $(document).ready(function () {
         }
       });
     }
+    }, 0);
   });
 
   function my_fatoorah_setup() {
@@ -2025,24 +2058,43 @@ $(document).ready(function () {
       processData: false,
       contentType: false,
       beforeSend: function () {
-        $("#place_order_btn").attr("disabled", true).html("Please Wait...");
+        $("#place_order_btn")
+          .data("placing", true)
+          .prop("disabled", true)
+          .attr("disabled", true)
+          .html("Please Wait...");
       },
       success: function (result) {
         csrfName = result["csrfName"];
         csrfHash = result["csrfHash"];
-        $("#place_order_btn").attr("disabled", false).html("Place Order");
         if (result.data.error == false) {
-          $("#place_order_btn").attr("disabled", true).html("Place Order");
+          $("#place_order_btn")
+            .data("placing", true)
+            .prop("disabled", true)
+            .attr("disabled", true)
+            .html("Please Wait...");
           Toast.fire({
             icon: "success",
             title: result.message,
           });
         } else {
+          $("#place_order_btn")
+            .data("placing", false)
+            .prop("disabled", false)
+            .attr("disabled", false)
+            .html("Place Order");
           Toast.fire({
             icon: "error",
             title: result.message,
           });
         }
+      },
+      error: function () {
+        $("#place_order_btn")
+          .data("placing", false)
+          .prop("disabled", false)
+          .attr("disabled", false)
+          .html("Place Order");
       },
     });
   }

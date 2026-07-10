@@ -63,15 +63,12 @@
                         <div class="mb-3 col-md-6">
                             <label for="city" class="form-label"><?= label('city', 'City') ?> <sup
                                     class="text-danger fw-bold">*</sup></label>
-                            <select class="form-control address-required" id="city" name="city_id">
-                                <option value=""><?= label('city', 'Select City') ?></option>
-                                <?php if (!empty($cities)) {
-                                    foreach ($cities as $city) { ?>
-                                        <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php }
-                                } ?>
-                            </select>
-                            <input type="hidden" name="city_name" id="city_name" value="" />
+                            <div class="position-relative zipcode-autocomplete-wrap">
+                                <input type="text" class="form-control address-required" id="city" name="city_name"
+                                    autocomplete="off" placeholder="<?= label('city', 'City') ?>">
+                                <div id="city-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                            </div>
+                            <input type="hidden" name="city_id" id="city_id" value="" />
                             <div class="invalid-feedback d-block address-field-error" data-for="city"></div>
                         </div>
 
@@ -212,15 +209,12 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_city" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
-                                <select class="form-control shadow-none edit-address-required" id="edit_city" name="city_id">
-                                    <option value=""><?= label('city', 'Select City') ?></option>
-                                    <?php if (!empty($cities)) {
-                                        foreach ($cities as $city) { ?>
-                                            <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                    <?php }
-                                    } ?>
-                                </select>
-                                <input type="hidden" name="city_name" id="edit_city_name" value="" />
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control shadow-none edit-address-required" id="edit_city" name="city_name"
+                                        autocomplete="off" placeholder="<?= label('city', 'City') ?>" />
+                                    <div id="edit-city-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
+                                <input type="hidden" name="city_id" id="edit_city_id" value="" />
                                 <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_city"></div>
                             </div>
 
@@ -275,6 +269,9 @@
 </style>
 <script>
 window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JSON_UNESCAPED_UNICODE) ?>;
+window.ADDRESS_CITIES = <?= json_encode(array_map(function ($c) {
+    return ['id' => $c['id'], 'name' => $c['name']];
+}, !empty($cities) ? $cities : []), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <script src="<?= base_url('assets/front_end/zipcode-autocomplete.js') ?>"></script>
 
@@ -287,15 +284,21 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
     (function ($) {
     var addZipBinding = window.AddressZipcodeAutocomplete.bind({
         zipcodes: window.ADDRESS_ZIPCODES,
+        cities: window.ADDRESS_CITIES,
         zipInput: '#zipcode',
-        citySelect: '#city',
-        suggestionsList: '#zipcode-suggestions'
+        cityInput: '#city',
+        cityIdInput: '#city_id',
+        zipSuggestionsList: '#zipcode-suggestions',
+        citySuggestionsList: '#city-suggestions'
     });
     var editZipBinding = window.AddressZipcodeAutocomplete.bind({
         zipcodes: window.ADDRESS_ZIPCODES,
+        cities: window.ADDRESS_CITIES,
         zipInput: '#edit_zipcode',
-        citySelect: '#edit_city',
-        suggestionsList: '#edit-zipcode-suggestions'
+        cityInput: '#edit_city',
+        cityIdInput: '#edit_city_id',
+        zipSuggestionsList: '#edit-zipcode-suggestions',
+        citySuggestionsList: '#edit-city-suggestions'
     });
 
     var addressFieldRules = {
@@ -361,7 +364,7 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         $('#mobile_number').val(defaultProfileMobile);
         $('#country').val('United States');
         $('#city').val('');
-        $('#city_name').val('');
+        $('#city_id').val('');
         $('#address-additional-section').addClass('d-none');
         $('input[name="type"][value="home"]').prop('checked', true);
         $('.address-field-error').text('').hide();
