@@ -1,0 +1,66 @@
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h4>Add Product FAQs</h4>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="<?= base_url('admin/home') ?>">Home</a></li>
+                        <li class="breadcrumb-item active">Add Product FAQs</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-info">
+                        <form class="form-horizontal form-submit-event" action="<?= base_url('admin/product_faqs/add_faqs'); ?>" method="POST" enctype="multipart/form-data">
+                            <div class="card-body">
+                                <div class="form-group row">
+                                    <label for="attributes" class="col-sm-2 col-form-label">Select Product <span class='text-danger text-sm'>*</span></label>
+                                    <div class="col-sm-10">
+                                        <select name="product_id" class="search_product w-100" data-placeholder=" Type to search and select products">
+                                            <?php
+                                            if (isset($fetched_data[0]['id'])) {
+                                                $product_id = explode(",", $fetched_data[0]['product_ids']);
+
+                                                foreach ($product_details as $row) {
+                                            ?>
+                                                    <option value="<?= $row['id'] ?>" selected><?= $row['name'] ?></option>
+                                            <?php
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="question" class="col-sm-2 col-form-label">Question<span class='text-danger text-sm'>*</span></label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" id="question" placeholder="question" name="question">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="answer" class="col-sm-2 col-form-label">Answer<span class='text-danger text-sm'>*</span></label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" id="answer" placeholder="answer" name="answer">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <button type="reset" class="btn btn-warning">Reset</button>
+                                    <button type="submit" class="btn btn-success" id="submit_btn">Add Product FAQs</button>
+                                </div>
+                            </div>
+                            
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

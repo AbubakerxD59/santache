@@ -1,0 +1,230 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+
+class Media_model extends CI_Model
+{
+    public function __construct()
+    {
+        $this->load->database();
+        $this->load->library(['ion_auth', 'form_validation']);
+        $this->load->helper(['url', 'language', 'function_helper']);
+    }
+
+    function set_media($data)
+    {
+        $data = escape_array($data);
+        $extenstion = trim($data['file_ext'], '.');
+        $extenstionData = find_media_type($extenstion);
+        $media_type = $extenstionData[0];
+        $data = [
+            'name' => $data['file_name'],
+            'extension' => ltrim($data['file_ext'], '.'),
+            'title' => $data['raw_name'],
+            'type' => ($media_type != false) ? $media_type : 'other',
+            'size' => $data['file_size'],
+            'sub_directory' => $data['sub_directory'],
+        ];
+
+        $this->db->insert('media', $data);
+        $insert_id = $this->db->insert_id();
+        return  $insert_id;
+    }
+
+    function get_media_by_id($id)
+    {
+        $this->db->where('id', $id);
+        $q = $this->db->get('media');
+        return $q->result_array();
+    }
+
+    public function get_media($limit = "", $offset = '', $sort = 'id', $order = 'DESC', $search = NULL, $type = "", $user_id = NULL)
+    {
+
+        $multipleWhere = '';
+
+        if (isset($search) and $search != '') {
+            $multipleWhere = ['id' => $search, 'name' => $search];
+        }
+
+        if (isset($type) and $type != '') {
+            $media_type = explode(",", $type);
+            $where_in = $media_type;
+        }
+        if (isset($seller_id) and $seller_id != '') {
+            $where['seller_id'] = $seller_id;
+        }
+
+        $count_res = $this->db->select(' COUNT(id) as `total` ');
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $count_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $count_res->where($where);
+        }
+        if (isset($where_in) && !empty($where_in)) {
+            $count_res->where_in("type", $where_in);
+        }
+        $attr_count = $count_res->get('media')->result_array();
+
+        foreach ($attr_count as $row) {
+            $total = $row['total'];
+        }
+
+        $search_res = $this->db->select('*');
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $search_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $search_res->where($where);
+        }
+        if (isset($where_in) && !empty($where_in)) {
+            $search_res->where_in("type", $where_in);
+        }
+        $city_search_res = $search_res->order_by($sort, $order)->limit($limit, $offset)->get('media')->result_array();
+        $bulkData = array();
+        $bulkData['error'] = (empty($city_search_res)) ? true : false;
+        $bulkData['message'] = (empty($city_search_res)) ? 'Media(s) does not exist' : 'Media retrieved successfully';
+        $bulkData['total'] = (empty($city_search_res)) ? 0 : $total;
+        $rows = $tempRow = array();
+        $i = 0;
+        foreach ($city_search_res as $row) {
+            $tempRow['id'] = $row['id'];
+            $tempRow['name'] = $row['name'];
+            if (file_exists(FCPATH . $row['sub_directory'] . $row['name'])) {
+                $row['image'] = get_image_url($row['sub_directory'] . $row['name'], 'thumb', 'sm', trim(strtolower($row['type'])));
+            } else {
+                $row['image'] = base_url() . NO_IMAGE;
+            }
+            $tempRow['image'] =  base_url() . $row['sub_directory'] . $row['name'];
+            $tempRow['extension'] = $row['extension'];
+            $tempRow['sub_directory'] = $row['sub_directory'];
+            $tempRow['relative_path'] = $row['sub_directory'] . $row['name'];
+            $tempRow['size'] = ($row['size'] > 1) ? formatBytes($row['size']) : $row['size'];
+            $rows[] = $tempRow;
+            $i++;
+        }
+        $bulkData['data'] = $rows;
+        print_r(json_encode($bulkData));
+    }
+
+    public function fetch_media()
+    {
+        if ($this->ion_auth->logged_in() && $this->ion_auth->is_admin()) {
+
+            $multipleWhere = $where_in = '';
+
+            if (isset($_GET['offset']))
+                $offset = $_GET['offset'];
+            if (isset($_GET['limit']))
+                $limit = $_GET['limit'];
+
+            if (isset($_GET['sort']))
+                if ($_GET['sort'] == 'id') {
+                    $sort = "id";
+                } else {
+                    $sort = $_GET['sort'];
+                }
+            if (isset($_GET['order']))
+                $order = $_GET['order'];
+
+            if (isset($_GET['search']) and $_GET['search'] != '') {
+                $search = $_GET['search'];
+                $multipleWhere = ['id' => $search, 'name' => $search];
+            }
+
+            if (isset($_GET['type']) and $_GET['type'] != '') {
+                $type = explode(",", $this->input->get('type'));
+                $where_in = $type;
+            }
+
+            $count_res = $this->db->select(' COUNT(id) as `total` ');
+
+            if (isset($multipleWhere) && !empty($multipleWhere)) {
+                $count_res->or_like($multipleWhere);
+            }
+            if (isset($where) && !empty($where)) {
+                $count_res->where($where);
+            }
+            if (isset($where_in) && !empty($where_in)) {
+                $count_res->where_in("type", $where_in);
+            }
+            if (!empty($_GET['start_date']) && !empty($_GET['end_date'])) {
+
+                $count_res->where(" DATE(date_created) >= DATE('" . $_GET['start_date'] . "') ");
+                $count_res->where(" DATE(date_created) <= DATE('" . $_GET['end_date'] . "') ");
+            }
+            $attr_count = $count_res->get('media')->result_array();
+
+            foreach ($attr_count as $row) {
+                $total = $row['total'];
+            }
+
+            $search_res = $this->db->select('*');
+            if (isset($multipleWhere) && !empty($multipleWhere)) {
+                $search_res->or_like($multipleWhere);
+            }
+            if (isset($where) && !empty($where)) {
+                $search_res->where($where);
+            }
+            if (isset($where_in) && !empty($where_in)) {
+                $search_res->where_in("type", $where_in);
+            }
+
+            if (!empty($_GET['start_date']) && !empty($_GET['end_date'])) {
+
+                $search_res->where(" DATE(date_created) >= DATE('" . $_GET['start_date'] . "') ");
+                $search_res->where(" DATE(date_created) <= DATE('" . $_GET['end_date'] . "') ");
+            }
+
+            $city_search_res = $search_res->order_by($sort, 'desc')->limit($limit, $offset)->get('media')->result_array();
+            $bulkData = array();
+            $bulkData['total'] = $total;
+            $rows = array();
+            $tempRow = array();
+
+            $i = 0;
+            foreach ($city_search_res as $row) {
+                $operate = '<div class="dropdown">
+                <a class="" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <i class="fas fa-ellipsis-v"></i>
+                </a>
+                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                <a href="javascript:void(0);" class="copy-to-clipboard dropdown-item" title="Copy to clipboard" ><i class="fa fa-copy"></i> Copy to clipboard</a>
+                <a href="javascript:void(0);" class="copy-relative-path dropdown-item" title="copy relative path" ><i class="fa fa-copy"></i> Copy relative path</a>
+               
+                
+                  <a href="javascript:void(0)" class="delete-media dropdown-item" data-id=' . $row['id'] . ' title="Delete" ><i class="fa fa-trash"></i> Delete</a></div>';
+                $tempRow['id'] = $row['id'];
+                $tempRow['name'] = $row['name'];
+                if (file_exists(FCPATH . $row['sub_directory'] . $row['name'])) {
+                    $row['image'] = get_image_url($row['sub_directory'] . $row['name'], 'thumb', 'sm', trim(strtolower($row['type'])));
+                } else {
+                    $row['image'] = base_url() . NO_IMAGE;
+                }
+
+                $tempRow['image'] = '<div class="image-upload-div text-center"><span class="path d-none">' . base_url() . $row['sub_directory'] . $row['name'] . '</span><span class="relative-path d-none">' . $row['sub_directory'] . $row['name'] . '</span><a href="' . $row['image'] . '" data-toggle="lightbox" data-gallery="gallery" class="image-box-100"><img src="' .  $row['image'] . '" class="img-fluid "></a></div>';
+
+
+                $tempRow['extension'] = $row['extension'];
+                $tempRow['sub_directory'] = $row['sub_directory'];
+                $tempRow['size'] = ($row['size'] > 1) ? formatBytes($row['size']) : $row['size'];
+                $tempRow['operate'] = $operate;
+                $rows[] = $tempRow;
+                $i++;
+            }
+
+            $bulkData['rows'] = $rows;
+            print_r(json_encode($bulkData));
+        } else {
+            redirect('admin/login', 'refresh');
+        }
+    }
+
+
+    public function delete_media($ids)
+    {
+        $this->db->where_in('id', $ids);
+        return $this->db->delete('media');
+    }
+}

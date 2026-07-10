@@ -1,0 +1,483 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+class Area_model extends CI_Model
+{
+
+    public function get_download_zipcodes()
+    {
+        $zipcodes = $this->db->get('zipcodes')->result_array();
+        return $zipcodes;
+    }
+    public function delete_zipcodes($ids)
+    {
+        // Example: Delete media items from database where id in $ids array
+        $this->db->where_in('id', $ids);
+        return $this->db->delete('zipcodes'); // Replace with your actual table name
+    }
+
+    function add_city($data)
+    {
+        $data = escape_array($data);
+        $city_data = [
+            'name' => $data['city_name'],
+            'minimum_free_delivery_order_amount' => $data['minimum_free_delivery_order_amount'],
+            'delivery_charges' => $data['delivery_charges'],
+        ];
+        if (isset($data['edit_city']) && !empty($data['edit_city'])) {
+            $this->db->set($city_data)->where('id', $data['edit_city'])->update('cities');
+        } else {
+            $this->db->insert('cities', $city_data);
+        }
+    }
+    function add_zipcode($data)
+    {
+        $data = escape_array($data);
+        $zipcode_data = [
+            'zipcode' => $data['zipcode'],
+            'city_id' => $data['city'],
+            'minimum_free_delivery_order_amount' => $data['minimum_free_delivery_order_amount'],
+            'delivery_charges' => $data['delivery_charges'],
+        ];
+        if (isset($data['edit_zipcode']) && !empty($data['edit_zipcode'])) {
+            $this->db->set($zipcode_data)->where('id', $data['edit_zipcode'])->update('zipcodes');
+        } else {
+            $this->db->insert('zipcodes', $zipcode_data);
+        }
+    }
+    function add_area($data)
+    {
+        $data = escape_array($data);
+
+        $area_data = [
+            'name' => $data['area_name'],
+            'city_id' => $data['city'],
+            'zipcode_id' => $data['zipcode'],
+            'minimum_free_delivery_order_amount' => $data['minimum_free_delivery_order_amount'],
+            'delivery_charges' => $data['delivery_charges'],
+        ];
+        if (isset($data['edit_area']) && !empty($data['edit_area'])) {
+            $this->db->set($area_data)->where('id', $data['edit_area'])->update('areas');
+        } else {
+            $this->db->insert('areas', $area_data);
+        }
+    }
+    public function get_list($table)
+    {
+        $offset = 0;
+        $limit = 10;
+        $sort = 'u.id';
+        $order = 'ASC';
+        $multipleWhere = '';
+
+        if (isset($_GET['offset']))
+            $offset = $_GET['offset'];
+        if (isset($_GET['limit']))
+            $limit = $_GET['limit'];
+
+        if (isset($_GET['sort']))
+            if ($_GET['sort'] == 'id') {
+                $sort = "id";
+            } else {
+                $sort = $_GET['sort'];
+            }
+        if (isset($_GET['order']))
+            $order = $_GET['order'];
+
+        if (isset($_GET['search']) and $_GET['search'] != '') {
+            $search = $_GET['search'];
+            if ($table == 'areas') {
+                $multipleWhere = ['areas.id' => $search, 'areas.name' => $search, 'cities.name' => $search, '`zipcodes.zipcode`' => $search, 'areas.minimum_free_delivery_order_amount' => $search, 'areas.delivery_charges' => $search];
+            } else {
+                $multipleWhere = ['cities.name' => $search, 'cities.id' => $search];
+            }
+        }
+        if ($table == 'areas') {
+            $count_res = $this->db->select(' COUNT(areas.id) as `total` ')->join('cities', 'areas.city_id=cities.id')->join('zipcodes', 'areas.zipcode_id=zipcodes.id');
+        } else {
+            $count_res = $this->db->select(' COUNT(id) as `total` ');
+        }
+
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $count_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $count_res->where($where);
+        }
+
+        $city_count = $count_res->get($table)->result_array();
+
+        foreach ($city_count as $row) {
+            $total = $row['total'];
+        }
+
+        if ($table == 'areas') {
+            $search_res = $this->db->select(' areas.* , cities.name as city_name , zipcodes.zipcode as zipcode')->join('cities', 'areas.city_id=cities.id')->join('zipcodes', 'areas.zipcode_id=zipcodes.id');
+        } else {
+            $search_res = $this->db->select(' * ');
+        }
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $search_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $search_res->where($where);
+        }
+
+        $city_search_res = $search_res->order_by($sort, $order)->limit($limit, $offset)->get($table)->result_array();
+        $bulkData = array();
+        $bulkData['total'] = $total;
+        $rows = array();
+        $tempRow = array();
+        $url = 'manage_' . $table;
+        foreach ($city_search_res as $row) {
+            $row = output_escaping($row);
+
+            $operate = '<div class="dropdown">
+            <a class="" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+              <i class="fas fa-ellipsis-v"></i>
+            </a>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+            <a href="javascript:void(0)" class="edit_btn  dropdown-item" title="Edit" data-id="' . $row['id'] . '" data-url="admin/area/' . $url . '"><i class="fa fa-pen"></i> Edit</a>
+            <a  href="javascript:void(0)" class=" btn dropdown-item" title="Delete" id="delete-location" data-table="' . $table . '" data-id="' . $row['id'] . '" ><i class="fa fa-trash"></i> Delete</a></div>';
+
+            $tempRow['id'] = $row['id'];
+            $tempRow['name'] = $row['name'];
+            if ($table == 'areas') {
+                $tempRow['city_name'] = $row['city_name'];
+                $tempRow['zipcode'] = $row['zipcode'];
+                $tempRow['minimum_free_delivery_order_amount'] = $row['minimum_free_delivery_order_amount'];
+                $tempRow['delivery_charges'] = $row['delivery_charges'];
+            }
+            $tempRow['minimum_free_delivery_order_amount'] = $row['minimum_free_delivery_order_amount'];
+            $tempRow['delivery_charges'] = $row['delivery_charges'];
+            $tempRow['operate'] = $operate;
+            $rows[] = $tempRow;
+        }
+        $bulkData['rows'] = $rows;
+        print_r(json_encode($bulkData));
+    }
+
+    function get_zipcode_list()
+    {
+        $offset = 0;
+        $limit = 10;
+        $sort = 'id';
+        $order = 'ASC';
+        $multipleWhere = array();
+
+        if (isset($_GET['offset']))
+            $offset = $_GET['offset'];
+        if (isset($_GET['limit']))
+            $limit = $_GET['limit'];
+
+        if (isset($_GET['sort']))
+            if ($_GET['sort'] == 'id') {
+                $sort = "zipcodes.id";
+            } else {
+                $sort = $_GET['sort'];
+            }
+        if (isset($_GET['order']))
+            $order = $_GET['order'];
+
+        if (isset($_GET['search']) and $_GET['search'] != '') {
+            $search = $_GET['search'];
+            $multipleWhere = array(
+                '`zipcodes.id`' => $search,
+                '`zipcodes.zipcode`' => $search,
+                '`cities.name`' => $search
+            );
+        }
+
+        $count_res = $this->db->select('COUNT(zipcodes.id) as `total`');
+
+        if (!empty($multipleWhere)) {
+            $count_res->or_like($multipleWhere);
+        }
+
+        $count_res->join('cities', 'zipcodes.city_id=cities.id', 'left');
+        $tax_count = $count_res->get('zipcodes')->result_array();
+
+        $total = 0;
+        foreach ($tax_count as $row) {
+            $total = $row['total'];
+        }
+
+        $search_res = $this->db->select('zipcodes.*, cities.name as city_name')->join('cities', 'zipcodes.city_id=cities.id', 'left');
+
+        if (!empty($multipleWhere)) {
+            $search_res->or_like($multipleWhere);
+        }
+
+        $tax_search_res = $search_res->order_by($sort, $order)->limit($limit, $offset)->get('zipcodes')->result_array();
+
+        $bulkData = array();
+        $bulkData['total'] = $total;
+        $rows = array();
+        $tempRow = array();
+
+        foreach ($tax_search_res as $row) {
+            $row = output_escaping($row);
+            $operate = '<div class="dropdown">
+    <a href="#" role="button" class="no-caret" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <i class="fas fa-ellipsis-v" style="color:#6035C0;"></i>
+    </a>
+    <div class="dropdown-menu">
+        <a href="javascript:void(0)"
+           class="dropdown-item edit_btn"
+           data-id="' . $row['id'] . '"
+           data-url="admin/area/manage_zipcodes">
+            <i class="fa fa-pen"></i> Edit
+        </a>
+
+        <a href="javascript:void(0)"
+           class="dropdown-item text-danger"
+           id="delete-zipcode"
+           data-id="' . $row['id'] . '">
+            <i class="fa fa-trash"></i> Delete
+        </a>
+    </div>
+</div>';
+
+            $tempRow['id'] = $row['id'];
+            $tempRow['zipcode'] = $row['zipcode'];
+            $tempRow['city_name'] = $row['city_name'];
+            $tempRow['minimum_free_delivery_order_amount'] = $row['minimum_free_delivery_order_amount'];
+            $tempRow['delivery_charges'] = $row['delivery_charges'];
+            $tempRow['operate'] = $operate;
+            $rows[] = $tempRow;
+        }
+        $bulkData['rows'] = $rows;
+        print_r(json_encode($bulkData));
+    }
+
+
+
+    function get_cities_list($search = "")
+    {
+        // Fetch users
+        $this->db->select('*');
+        $this->db->where("name like '%" . $search . "%'");
+        $fetched_records = $this->db->get('cities');
+        $cities = $fetched_records->result_array();
+
+        // Initialize Array with fetched data
+        $data = array();
+        foreach ($cities as $city) {
+            $data[] = array("id" => $city['id'], "text" => $city['name']);
+        }
+        return $data;
+    }
+
+
+    function get_zipcodes($search = '', $limit = '', $offset = '')
+    {
+        $multipleWhere = '';
+        $where = array();
+        if (!empty($search)) {
+            $multipleWhere = [
+                '`zipcode`' => $search
+            ];
+        }
+
+        $count_res = $this->db->select(' COUNT(id) as `total`');
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $count_res->group_start();
+            $count_res->or_like($multipleWhere);
+            $count_res->group_end();
+        }
+
+
+        $cat_count = $count_res->get('zipcodes')->result_array();
+        foreach ($cat_count as $row) {
+            $total = $row['total'];
+        }
+
+        $search_res = $this->db->select('*');
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $search_res->group_start();
+            $search_res->or_like($multipleWhere);
+            $search_res->group_end();
+        }
+        if (isset($where) && !empty($where)) {
+            $search_res->where($where);
+        }
+
+        $cat_search_res = $search_res->limit($limit, $offset)->get('zipcodes')->result_array();
+        $rows = $tempRow = $bulkData = array();
+        $bulkData['error'] = (empty($cat_search_res)) ? true : false;
+        $bulkData['message'] = (empty($cat_search_res)) ? 'Pincodes(s) does not exist' : 'Pincodes retrieved successfully';
+        $bulkData['total'] = (empty($cat_search_res)) ? 0 : $total;
+        if (!empty($cat_search_res)) {
+            foreach ($cat_search_res as $row) {
+                $row = output_escaping($row);
+                $tempRow['id'] = $row['id'];
+                $tempRow['zipcode'] = $row['zipcode'];
+                $tempRow['date_created'] = $row['date_created'];
+                $rows[] = $tempRow;
+            }
+            $bulkData['data'] = $rows;
+        } else {
+            $bulkData['data'] = [];
+        }
+        return $bulkData;
+    }
+    function get_area_by_city($city_id, $sort = "a.name", $order = "ASC", $search = "", $limit = '', $offset = '')
+    {
+        $multipleWhere = '';
+        $where = array();
+        if (!empty($search)) {
+            $multipleWhere = [
+                '`z.zipcode`' => $search
+            ];
+        }
+        if ($city_id != '') {
+            $where['a.city_id'] = $city_id;
+        }
+        if ($this->db->field_exists('minimum_free_delivery_order_amount', 'zipcodes')) {
+
+            $search_res = $this->db->select('z.zipcode,z.id as id');
+            if (isset($multipleWhere) && !empty($multipleWhere)) {
+                $search_res->group_start();
+                $search_res->or_like($multipleWhere);
+                $search_res->group_end();
+            }
+            $areas = $search_res->where('city_id', $city_id)->order_by($sort, $order)->limit($limit, $offset)->get('zipcodes z')->result_array();
+        } else {
+            $search_res = $this->db->select('z.zipcode,z.id as id')->join('zipcodes z', 'z.id=a.zipcode_id');
+            if (isset($multipleWhere) && !empty($multipleWhere)) {
+                $search_res->group_start();
+                $search_res->or_like($multipleWhere);
+                $search_res->group_end();
+            }
+            $areas = $search_res->where('city_id', $city_id)->order_by($sort, $order)->limit($limit, $offset)->get('areas a')->result_array();
+        }
+
+        $bulkData = array();
+        $bulkData['error'] = (empty($areas)) ? true : false;
+        if (!empty($areas)) {
+            for ($i = 0; $i < count($areas); $i++) {
+                $areas[$i] = output_escaping($areas[$i]);
+            }
+        }
+        $bulkData['data'] = (empty($areas)) ? [] : $areas;
+        return $bulkData;
+    }
+    function get_cities($sort = "c.name", $order = "ASC", $search = "", $limit = '', $offset = '')
+    {
+        $multipleWhere = '';
+        $where = array();
+        if (!empty($search)) {
+            $multipleWhere = [
+                '`c.name`' => $search
+            ];
+        }
+        $count_res = $this->db->select(' COUNT(id) as `total`');
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $count_res->group_start();
+            $count_res->or_like($multipleWhere);
+            $count_res->group_end();
+        }
+        $cat_count = $count_res->get('cities c')->result_array();
+
+        $search_res = $this->db->select('c.*')->join('areas a', 'c.id=a.city_id', "left");
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $search_res->group_start();
+            $search_res->or_like($multipleWhere);
+            $search_res->group_end();
+        }
+        if (isset($where) && !empty($where)) {
+            $search_res->where($where);
+        }
+        $cities = $search_res->group_by('c.id')->order_by($sort, $order, $search)->limit($limit, $offset)->get('cities c')->result_array();
+        $bulkData = array();
+        $bulkData['error'] = (empty($cities)) ? true : false;
+        if (!empty($cities)) {
+            for ($i = 0; $i < count($cities); $i++) {
+                $cities[$i] = output_escaping($cities[$i]);
+            }
+        }
+        $bulkData['total'] = $cat_count[0]['total'];
+        $bulkData['data'] = (empty($cities)) ? [] : $cities;
+        return $bulkData;
+    }
+    public function get_countries()
+    {
+        $this->load->helper('file');
+        $data = file_get_contents(base_url('countries.sql'));
+    }
+
+    public function get_countries_list(
+        $offset = 0,
+        $limit = 10,
+        $sort = 'id',
+        $order = 'ASC'
+    ) {
+        $multipleWhere = '';
+
+        if (isset($_GET['offset']))
+            $offset = $_GET['offset'];
+        if (isset($_GET['limit']))
+            $limit = $_GET['limit'];
+
+        if (isset($_GET['sort']))
+            if ($_GET['sort'] == 'id') {
+                $sort = "id";
+            } else {
+                $sort = $_GET['sort'];
+            }
+        if (isset($_GET['order']))
+            $order = $_GET['order'];
+
+        if (isset($_GET['search']) and $_GET['search'] != '') {
+            $search = $_GET['search'];
+            $multipleWhere = ['numeric_code' => $search, 'name' => $search, 'currency' => $search];
+        }
+
+        $count_res = $this->db->select(' COUNT(id) as `total` ');
+
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $count_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $count_res->where($where);
+        }
+
+        $attr_count = $count_res->get('countries')->result_array();
+
+        foreach ($attr_count as $row) {
+            $total = $row['total'];
+        }
+
+        $search_res = $this->db->select('*');
+        if (isset($multipleWhere) && !empty($multipleWhere)) {
+            $search_res->or_like($multipleWhere);
+        }
+        if (isset($where) && !empty($where)) {
+            $search_res->where($where);
+        }
+
+        $city_search_res = $search_res->order_by($sort, $order)->limit($limit, $offset)->get('countries')->result_array();
+        $bulkData = array();
+        $bulkData['total'] = $total;
+        $rows = array();
+        $tempRow = array();
+        foreach ($city_search_res as $row) {
+            $row = output_escaping($row);
+            $tempRow['id'] = $row['id'];
+            $tempRow['numeric_code'] = $row['numeric_code'];
+            $tempRow['name'] = $row['name'];
+            $tempRow['capital'] = $row['capital'];
+            $tempRow['phonecode'] = $row['phonecode'];
+            $tempRow['currency'] = $row['currency'];
+            $tempRow['currency_name'] = $row['currency_name'];
+            $tempRow['currency_symbol'] = $row['currency_symbol'];
+            $rows[] = $tempRow;
+        }
+        $bulkData['rows'] = $rows;
+        print_r(json_encode($bulkData));
+    }
+}

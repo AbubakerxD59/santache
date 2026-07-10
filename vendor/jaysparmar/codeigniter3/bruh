@@ -1,0 +1,99 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Bruh CLI Tool - Minimal Version
+ * 
+ * A chill command-line interface for CodeIgniter 3 applications
+ * For when you need to get stuff done, bruh! 😎
+ * 
+ * Usage: php bruh [command] [options]
+ */
+
+// Ensure we're running from command line
+if (php_sapi_name() !== 'cli') {
+    echo "This script can only be run from the command line.\n";
+    exit(1);
+}
+
+// Set CLI environment
+if (!defined('STDIN')) {
+    define('STDIN', fopen('php://stdin', 'r'));
+}
+if (!defined('STDOUT')) {
+    define('STDOUT', fopen('php://stdout', 'w'));
+}
+if (!defined('STDERR')) {
+    define('STDERR', fopen('php://stderr', 'w'));
+}
+
+// Bootstrap the application
+require_once __DIR__ . '/vendor/autoload.php';
+
+use CodeIgniter3\Commands\CommandRegistry;
+
+class BruhCLI
+{
+    private $commandRegistry;
+    private $args = [];
+    
+    public function __construct($argv)
+    {
+        $this->args = array_slice($argv, 1); // Remove script name
+        $this->commandRegistry = new CommandRegistry();
+    }
+    
+    /**
+     * Run the CLI application
+     */
+    public function run()
+    {
+        if (empty($this->args)) {
+            $this->executeCommand('help');
+            return;
+        }
+        
+        $commandName = $this->args[0];
+        
+        // Handle help aliases
+        if (in_array($commandName, ['help', '-h', '--help'])) {
+            $commandName = 'help';
+        }
+        
+        // Handle version aliases
+        if (in_array($commandName, ['version', '-v', '--version'])) {
+            $commandName = 'version';
+        }
+        
+        $this->executeCommand($commandName);
+    }
+    
+    /**
+     * Execute a command by name
+     */
+    private function executeCommand($commandName)
+    {
+        $command = $this->commandRegistry->getCommand($commandName);
+        
+        if ($command) {
+            // Pass arguments to the command (excluding the command name itself)
+            $commandArgs = array_slice($this->args, 1);
+            $command->setArgs($commandArgs);
+            $command->execute();
+        } else {
+            $this->error("Unknown command: {$commandName}");
+            $this->executeCommand('help');
+        }
+    }
+    
+    /**
+     * Output error message
+     */
+    private function error($message)
+    {
+        echo "\033[31m✗ " . $message . "\033[0m\n";
+    }
+}
+
+// Run the CLI application
+$cli = new BruhCLI($argv);
+$cli->run();

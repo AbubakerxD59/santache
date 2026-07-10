@@ -1,0 +1,1 @@
+!function(){"use strict";window.jQuery.fn.ratingThemes["krajee-fa"]={filledStar:'<i class="fa fa-star"></i>',emptyStar:'<i class="fa fa-star-o"></i>',clearButton:'<i class="fa fa-lg fa-minus-circle"></i>'}}();

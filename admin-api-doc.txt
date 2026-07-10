@@ -1,0 +1,680 @@
+/*
+	WRTeam Developers
+*/
+
+API URL -->> 
+	http://eshopweb.store/admin/app/v1/api/{METHOD_NAME}  - (all APIs in one file only)
+
+---------------------------------------------------------------------------
+Defined API Methods:-
+---------------------------------------------------------------------------
+
+1. login
+2  get_orders
+3. update_order_status
+4. update_order_item_status
+5. get_categories
+6. get_products
+7. get_customers
+8. get_transactions
+9. get_statistics
+10. forgot_password
+11. delete_order
+12. get_delivery_boys
+13. verify_user
+14. get_settings
+15. update_fcm
+16. send_message
+17. edit_ticket
+18. get_ticket_types
+19. get_tickets
+20. get_messages
+21. get_cities
+22. get_areas_by_city_id
+23. delete_order_receipt
+24. get_order_tracking
+25. edit_order_tracking
+26. update_receipt_status
+27. get_return_requests
+28. update_return_request
+29. manage_delivery_boy_cash_collection
+30. get_delivery_boy_cash_collection
+31. add_product
+32. upload_media
+33. get_media
+34. get_zipcodes
+35. get_attribute_set
+36. get_attributes
+37. get_attribute_values
+38. get_taxes
+39. delete_product
+40. add_brand
+41. get_brands_data
+42. delete_brand
+43. send_digital_product_mail
+44. get_digital_order_mails
+45. manage_stock
+46. send_message
+47. edit_ticket
+48. get_ticket_types
+49. get_tickets
+50. get_messages
+51. get_cities
+52. get_areas_by_city_id
+53. get_countries_data
+54. add_product_faqs
+55. get_product_faqs
+56. delete_product_faq
+57. edit_product_faq
+58. add_tax
+59. add_category
+60. delete_category
+61. add_slider
+62. update_customer_wallet
+63. add_pickup_location
+64. get_pickup_locations
+65. get_slider_list
+66. delete_slider
+67. add_faq
+68. delete_faq
+69. get_faqs 
+70. delete_tax
+71. add_delivery_boy
+72. delete_delivery_boy
+73. add_flash_sale
+74. get_flash_sale
+75. delete_flash_sale
+76. add_city
+77. delete_city
+78. add_zipcode
+79. delete_zipcode
+80. add_offer
+81. delete_offer
+82. get_offer_images
+83. add_offer_slider
+84. delete_offer_slider
+85. add_promo_code
+
+------------------------------------------
+What parameters to be Passed?  See here >>
+------------------------------------------
+
+
+Use POST method to pass the parameters
+
+1.login
+    mobile: 9874565478
+    password: 12345678
+    fcm_id: FCM_ID //{ optional }
+
+2. get_orders
+    id:101 { optional }
+    user_id:101 { optional }
+    active_status:received  {received,delivered,cancelled,processed,returned}     // optional
+    start_date:2020-09-07 or 2020/09/07 { optional }
+    end_date:2021-03-15 or 2021/03/15 { optional }
+    search:keyword { optional }
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort: id / date_added // { default - id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    download_invoice:0 // { default - 0 } optional        
+    order_type : digital/simple
+
+3. update_order_status
+    order_id:1
+    status : received / processed / shipped / delivered / cancelled / returned
+    delivery_boy_id: 15 {optional}
+
+4. update_order_item_status
+    order_item_id:1
+    status : received / processed / shipped / delivered / cancelled / returned
+
+5. get_categories
+    id:15               // optional
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:               id / name // { default - id } optional
+    order:DESC/ASC      // { default - ASC } optional
+    has_child_or_item:false { default - true}  optional
+
+6. get_products
+    id:101              // optional
+    category_id:29      // optional
+    user_id:15          // optional
+    search:keyword      // optional
+    tags:multiword tag1, tag2, another tag      // optional
+    flag:low/sold      // optional
+    attribute_value_ids : 34,23,12 // { Use only for filteration } optional
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:p.id / p.date_added / pv.price // { default - p.id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    is_similar_products:1 // { default - 0 } optional
+    top_rated_product: 1 // { default - 0 } optional
+    show_only_active_products:false { default - true } optional
+
+7. get_customers
+    id: 1001                // { optional}
+    search : Search keyword // { optional }
+    limit:25                // { default - 25 } optional
+    offset:0                // { default - 0 } optional
+    sort: id/username/email/mobile/area_name/city_name/date_created // { default - id } optional
+    order:DESC/ASC          // { default - DESC } optional
+
+8. get_transactions
+    user_id:73              // { optional}
+    id: 1001                // { optional}
+    transaction_type:transaction / wallet // { default - transaction } optional
+    type : COD / stripe / razorpay / paypal / paystack / flutterwave - for transaction | credit / debit - for wallet // { optional }
+    search : Search keyword // { optional }
+    limit:25                // { default - 25 } optional
+    offset:0                // { default - 0 } optional
+    sort: id / date_created // { default - id } optional
+    order:DESC/ASC          // { default - DESC } optional
+
+9. get_statistics
+
+10. forgot_password
+    mobile_no:7894561235            
+    new: pass@123
+
+11. delete_order
+    order_id:1
+
+12. get_delivery_boys
+    id: 1001                // { optional}
+    search : Search keyword // { optional }
+    limit:25                // { default - 25 } optional
+    offset:0                // { default - 0 } optional
+    sort: id/username/email/mobile/area_name/city_name/date_created // { default - id } optional
+    order:DESC/ASC          // { default - DESC } optional
+
+13. verify_user
+    mobile: 9874565478
+    email: test@gmail.com // { optional }
+
+14. get_settings
+    type : payment_method // { default : all  } optional            
+    user_id:  15 { optional }
+
+15. update_fcm
+    user_id:12
+    fcm_id: FCM_ID
+
+16. delete_order_receipt
+    id=57 
+
+17. get_order_tracking
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:               // { id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    search:value        // {optional} 
+
+18. edit_order_tracking
+    order_id:57 
+    order_item_id:123
+    courier_agency:asd agency
+    tracking_id:t_id123
+    url:http://test.com
+
+19. update_receipt_status
+
+    order_id:57 
+    user_id:123
+    status:1        // { 0:pending|1:rejected|2:accepted }  
+
+27. get_return_requests
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:               // { id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    search:value        // {optional} 
+    
+28. update_return_request
+    return_request_id:57 
+    order_item_id:123 
+    status:1        // { 0:pending|1:accepted|2:rejected }  
+    update_remarks:  //{optional}
+
+29. manage_delivery_boy_cash_collection
+    delivery_boy_id:57 
+    amount:123 
+    transaction_date: 2021-12-08T16:13  // {optional}
+    message:test  //{optional}
+
+30. get_delivery_boy_cash_collection
+    delivery_boy_id:15  // {optional}
+    status:             // {delivery_boy_cash (delivery boy collected) | delivery_boy_cash_collection (admin collected)}
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:               // { id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    search:value        // {optional} 
+
+31. add_product
+    user_id:1
+    pro_input_name: product name
+    short_description: description
+    product_identity:product identity
+    tags:tag1,tag2,tag3     //{comma saprated}
+    pro_input_tax:tax_id
+    indicator:1             //{ 0 - none | 1 - veg | 2 - non-veg }
+    made_in: india          //{optional}
+    brand: Adidas          //{optional}
+    total_allowed_quantity:100
+    minimum_order_quantity:12
+    quantity_step_size:1
+    warranty_period:1 month     {optional}
+    guarantee_period:1 month   {optional}
+    deliverable_type:1        //{0:none, 1:all, 2:include, 3:exclude}
+    deliverable_zipcodes:1,2,3  //{NULL: if deliverable_type = 0 or 1}
+    deliverable_city_type:1        //{0:none, 1:all, 2:include, 3:exclude}
+    deliverable_cities:1,2,3  //{NULL: if deliverable_type = 0 or 1}
+    is_prices_inclusive_tax:0   //{1: inclusive | 0: exclusive}
+    cod_allowed:1               //{ 1:allowed | 0:not-allowed }
+
+   if(product_type == digital_product){
+
+    download_allowed:1               //{ 1:allowed | 0:not-allowed }
+    download_link_type:self_hosted             //{ values : self_hosted | add_link }
+    pro_input_zip:file              //when download type is self_hosted add file for download
+    download_link : url             //{URL of download file}
+   
+   }
+
+    is_returnable:1             // { 1:returnable | 0:not-returnable } 
+    is_cancelable:1             //{1:cancelable | 0:not-cancelable}
+    cancelable_till:            //{received,processed,shipped}
+    pro_input_image:file
+    other_images: files
+    video_type:                 // {values: vimeo | youtube}
+    video:                      //{URL of video}
+    pro_input_video: file
+    pro_input_description:product's description 
+    category_id:99
+    attribute_values:1,2,3,4,5
+    --------------------------------------------------------------------------------
+    till above same params
+    --------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------
+    common param for simple and variable product
+    --------------------------------------------------------------------------------          
+    product_type:simple_product | variable_product | digital_product 
+    variant_stock_level_type:product_level | variable_level
+    
+    if(product_type == digital_product):
+        simple_price:100
+        simple_special_price:90
+
+    if(product_type == variable_product):
+        variants_ids:3 5,4 5,1 2
+        variant_price:100,200
+        variant_special_price:90,190
+        variant_images:files              //{optional}
+
+        sku_variant_type:test            //{if (variant_stock_level_type == product_level)}
+        total_stock_variant_type:100     //{if (variant_stock_level_type == product_level)}
+        variant_status:1                 //{if (variant_stock_level_type == product_level)}
+
+        variant_sku:test,test             //{if(variant_stock_level_type == variable_level)}
+        variant_total_stock:120,300       //{if(variant_stock_level_type == variable_level)}
+        variant_level_stock_status:1,1    //{if(variant_stock_level_type == variable_level)}
+
+    if(product_type == simple_product):
+        simple_product_stock_status:null|0|1   {1=in stock | 0=out stock}
+        simple_price:100
+        simple_special_price:90
+        product_sku:test                    {optional}
+        product_total_stock:100             {optional}
+        variant_stock_status: 0             {optional}//{0 =>'Simple_Product_Stock_Active' 1 => "Product_Level" 2 => "Variable_Level"	}
+
+32. upload_media
+    user_id:1
+    documents[]:FILES
+
+33. get_media
+    limit:25            // { default - 25 } optional
+    offset:0            // { default - 0 } optional
+    sort:               // { id } optional
+    order:DESC/ASC      // { default - DESC } optional
+    search:value        // {optional} 
+    type:image          // {documents,spreadsheet,archive,video,audio,image}
+
+34. get_zipcodes
+    limit:10 {optional}
+    offset:0 {optional}
+    search:0 {optional}
+
+35. get_attribute_set
+    sort: ats.name              // { ats.name / ats.id } optional
+    order:DESC/ASC      // { default - ASC } optional
+    search:value        // {optional} 
+    limit:10  {optional}
+    offset:10  {optional}
+
+36. get_attributes
+    attribute_set_id:1  // {optional}
+    sort: a.name              // { a.name / a.id } optional
+    order:DESC/ASC      // { default - ASC } optional
+    search:value        // {optional} 
+    limit:10  {optional}
+    offset:10  {optional}
+
+37. get_attribute_values
+    attribute_id:1  // {optional}
+    sort:a.name               // { a.name / a.id } optional
+    order:DESC/ASC      // { default - ASC } optional
+    search:value        // {optional} 
+    limit:10  {optional}
+    offset:10  {optional}
+
+38. get_taxes
+
+39. delete_product
+    product_id:1
+    
+
+40. add_brand
+     
+    brand_input_name : test
+    brand_input_image : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg)
+
+    if : edit brand
+
+    edit_brand : 24 (brand_id)
+    brand_input_name : test
+    brand_input_image : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg)
+
+41. get_brands_data
+
+42.delete_brand
+    id : 1
+
+43. send_digital_product_mail
+    
+    order_id : 1
+    order_item_id : 101
+    customer_email: abc123@gmail.com
+    subject : this is test mail
+    message : this is our first test mail for digital product
+    username : Admin
+    attachment : file url for attachment
+
+44. get_digital_order_mails
+
+    order_id:156 {optional}
+    order_item_id:5 {optional}
+
+45. manage_stock
+
+    product_variant_id:156
+    quantity:5
+    type:add/subtract 
+
+    if type is subtract then need to pass current_stock
+    current_stock:102
+
+46. send_message
+        user_type:admin
+        user_id:1
+        ticket_id:1	
+        message:test	
+        attachments[]:files  {optional} {type allowed -> image,video,document,spreadsheet,archive}
+
+47. edit_ticket
+        ticket_id:1
+        status:1 or 2 or 3 or 4 or 5  [1 -> pending, 2 -> opened, 3 -> resolved, 4 -> closed, 5 -> reopened]
+
+48. get_ticket_types
+
+49. get_tickets
+        ticket_id: 1001                // { optional}
+        ticket_type_id: 1001                // { optional}
+        user_id: 1001                // { optional}
+        status:   [1 -> pending, 2 -> opened, 3 -> resolved, 4 -> closed, 5 -> reopened]// { optional}
+        search : Search keyword // { optional }
+        limit:25                // { default - 25 } optional
+        offset:0                // { default - 0 } optional
+        sort: id | date_created | last_updated                // { default - id } optional
+        order:DESC/ASC          // { default - DESC } optional
+
+50. get_messages
+        ticket_id: 1001            
+        user_type: 1001                // { optional}
+        user_id: 1001                // { optional}
+        search : Search keyword // { optional }
+        limit:25                // { default - 25 } optional
+        offset:0                // { default - 0 } optional
+        sort: id | date_created | last_updated                // { default - id } optional
+        order:DESC/ASC          // { default - DESC } optional
+    
+51. get_cities
+        limit:10 {optional}
+        offset:0 {optional}
+
+52. get_areas_by_city_id
+        id='57'
+
+53. get_countries_data
+
+54.add_product_faqs
+    product_id:1
+    question:test
+    answer:test
+
+55.get_product_faqs 
+            id:2    // {optional}
+            product_id:25   // {optional}
+            user_id:1       // {optional}
+            search : Search keyword // { optional }
+            limit:25                // { default - 10 } optional
+            offset:0                // { default - 0 } optional
+            sort: id                // { default - id } optional
+            order:DESC/ASC          // { default - DESC } optional
+
+56.delete_product_faq
+    id:1
+
+57.edit_product_faq
+    id:1
+    answer:test
+
+58.add_tax
+    title:test
+    percentage:20
+    edit_tax_id: 1(if wants to update)
+
+59 add_category
+
+    category_input_name : test
+    category_input_image : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg)
+    banner : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg) { optional }
+    category_parent : 1 { optional }
+    edit_category : 1(if wants to update)
+
+60. delete_category
+    
+    id : 1
+
+61. add_slider
+
+    slider_type : default/categories/products/slider_url
+    image : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg)
+    category_id : 1 (if type is categories)
+    product_id : 1 (if type is products)
+    link : any link (http://localhost/eshop/admin/app/v1/api/add_slider)  (id type is slider_url)
+    edit_slider : 1 (if wants to update)
+
+62. update_customer_wallet
+
+    user_id:259
+    type:credit / debit
+    message:test
+    amount:200    
+
+63. add_pickup_location
+
+        pickup_location : Croma Digital
+         name:admin // shipper's name
+         email : admin123@gmail.com
+         phone : 1234567890
+         address : 201,time square,mirjapar hignway // note : must add specific address like plot_no/street_no/office_no etc.
+         address2 : near prince lawns
+         city : bhuj
+         state : gujarat
+         country : india
+         pincode : 370001
+         latitude : 23.5643445644
+         longitude : 69.312531534
+         status : 0/1 {default :0}
+
+
+64. get_pickup_locations
+
+65. get_slider_list
+
+66. delete_slider
+
+    id : 1
+
+67. add_faq
+
+    question : test
+    answer : test
+
+68. delete_faq
+
+    id : 1
+
+69. get_faqs    
+
+    id:2    // {optional}
+    search : Search keyword // { optional }
+    limit:25                // { default - 10 } optional
+    offset:0                // { default - 0 } optional
+    sort: id                // { default - id } optional
+    order:DESC/ASC          // { default - DESC } optional
+
+70. delete_tax
+
+    id : 1    
+
+71. add_delivery_boy
+
+     name : test
+     email : d_boy@gmail.com
+     mobile : 8787878787
+     password : 12345678 (no need to pass if edit delivery boy)
+     confirm_password : 12345678 (no need to pass if edit delivery boy)
+     address : test
+     bonus_type : fixed_amount_per_order / percentage_per_order
+     bonus_amount : 100 (if type fixed_amount_per_order )   
+     bonus_percentage : 10 (if type percentage_per_order)
+     driving_license[] : select 2 files  (no need to pass if edit delivery boy if wants to change then only required)
+
+     edit_delivery_boy : 2 (if wants to update)
+
+72. delete_delivery_boy
+
+    id : 1 
+
+73. add_flash_sale
+
+    title : sale
+    short_description : sale
+    discount : 10
+    product_ids[] : 1,2,3
+    start_date : date and time
+    end_date : date and time
+
+74. get_flash_sale
+
+    /*
+            id:15               // optional
+            limit:25            // { default - 25 } optional
+            offset:0            // { default - 0 } optional
+            sort:               id / name
+                                // { default -row_id } optional
+            search:value        // {optional}
+            order:DESC/ASC      // { default - DESC } optional
+            p_limit:10          // { default - 10 } {optional}
+            p_offset:10         // { default - 0 } {optional}    
+            p_sort:pv.price      // { default - pid } {optional}
+            p_order:asc         // { default - desc } {optional}
+        */
+
+75. delete_flash_sale
+
+    id : 1 
+
+76. add_city
+
+    city_name : test
+    edit_city : 1 (if wants to update)
+
+77. delete_city
+
+    id : 1
+
+78. add_zipcode
+
+    city : 1
+    zipcode : 370001
+    minimum_free_delivery_order_amount : 100
+    delivery_charges : 20
+    edit_zipcode : 1 (if wants to update)
+
+79. delete_zipcode
+
+    id : 1
+
+80. add_offer
+
+    offer_type : default/categories/products/offer_url/all_products/brand
+    image : relative_path_of_image (uploads/media/2022/9624-2022-02-241.jpeg)
+    category_id : 1 (if type is categories)
+    product_id : 1 (if type is products)
+    brand_id : 1(if type is brand)
+    min_discount : 10
+    max_discount : 20
+    link : any link (http://localhost/eshop/admin/app/v1/api/add_slider)  (id type is offer_url)
+    main_offer_type : popup_offer (if wants to add popup offer)
+    edit_offer : 1 (if wants to update)
+
+81. delete_offer
+    
+    id : 1
+
+82. get_offer_images
+
+83. add_offer_slider
+
+    style : default/style_1/style_2/style_3/style_4
+    offer_ids[] : 1,2
+
+84. delete_offer_slider
+
+    id : 1
+
+85. add_promo_code
+
+    promo_code:code
+    message:message
+    start_date:2024-01-27T16:54
+    end_date:2024-03-28T11:47
+    no_of_users:1
+    minimum_order_amount:100
+    discount:10
+    max_discount_amount:80
+    discount_type:amount
+    repeat_usage:0  // optional
+    no_of_repeat_usage : 1 (enter if repeat usage 1)
+    is_cashback:0  // optional
+    status:1
+    image: relative_path_of_image(uploads/chat_media//processed-c6eee938-61fb-4d77-baf9-f2d3b544f7b4_uOOZX4BI_jpeg_17.jpeg)
+    list_promocode:1
+    is_specific_user: 0  // optional
+    users_id[] : 1,2 (enter if is_specific_user 1)
+    edit_promo_code:19 (if wants to update)
