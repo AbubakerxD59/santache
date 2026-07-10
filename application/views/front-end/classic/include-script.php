@@ -4,9 +4,92 @@
 <script src="<?= THEME_ASSETS_URL . 'js/firebase-app.js' ?>"></script>
 <script src="<?= THEME_ASSETS_URL . 'js/firebase-auth.js' ?>"></script>
 <script src="<?= base_url('firebase-config.js') ?>"></script>
+<style>
+    #google-auth-loader {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+    }
+    #google-auth-loader.is-visible {
+        display: flex;
+    }
+    #google-auth-loader .google-auth-loader-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 28px 32px;
+        text-align: center;
+        max-width: 320px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    #google-auth-loader .google-auth-spinner {
+        width: 36px;
+        height: 36px;
+        margin: 0 auto 14px;
+        border: 3px solid #e5e5e5;
+        border-top-color: #4285f4;
+        border-radius: 50%;
+        animation: google-auth-spin 0.7s linear infinite;
+    }
+    #google-auth-loader .google-auth-loader-title {
+        margin: 0 0 6px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #222;
+    }
+    #google-auth-loader .google-auth-loader-text {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.4;
+    }
+    @keyframes google-auth-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 <script>
     (function () {
+        var authInProgress = false;
+
+        function ensureLoader() {
+            var el = document.getElementById('google-auth-loader');
+            if (el) return el;
+            el = document.createElement('div');
+            el.id = 'google-auth-loader';
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-live', 'polite');
+            el.innerHTML =
+                '<div class="google-auth-loader-card">' +
+                    '<div class="google-auth-spinner" aria-hidden="true"></div>' +
+                    '<p class="google-auth-loader-title">Connecting to Google…</p>' +
+                    '<p class="google-auth-loader-text">Please complete sign-in in the popup window.</p>' +
+                '</div>';
+            document.body.appendChild(el);
+            return el;
+        }
+
+        function showGoogleAuthLoader(title, text) {
+            var el = ensureLoader();
+            if (title) {
+                el.querySelector('.google-auth-loader-title').textContent = title;
+            }
+            if (text) {
+                el.querySelector('.google-auth-loader-text').textContent = text;
+            }
+            el.classList.add('is-visible');
+        }
+
+        function hideGoogleAuthLoader() {
+            var el = document.getElementById('google-auth-loader');
+            if (el) el.classList.remove('is-visible');
+            authInProgress = false;
+        }
+
         function showAuthError(message) {
+            hideGoogleAuthLoader();
             if (typeof Toast !== 'undefined' && Toast.fire) {
                 Toast.fire({
                     icon: 'error',
@@ -17,16 +100,65 @@
             }
         }
 
+        function warmFirebaseAuth() {
+            if (typeof firebase === 'undefined' || !firebase.auth) return;
+            try {
+                var auth = firebase.auth();
+                auth.onAuthStateChanged(function () {});
+                auth.getRedirectResult().catch(function () {});
+
+                var authDomain = firebase.app().options.authDomain;
+                if (!authDomain || document.getElementById('firebase-auth-preconnect')) return;
+
+                var origins = [
+                    'https://' + authDomain,
+                    'https://accounts.google.com',
+                    'https://apis.google.com',
+                    'https://www.googleapis.com'
+                ];
+                origins.forEach(function (origin, index) {
+                    var link = document.createElement('link');
+                    if (index === 0) link.id = 'firebase-auth-preconnect';
+                    link.rel = 'preconnect';
+                    link.href = origin;
+                    link.crossOrigin = 'anonymous';
+                    document.head.appendChild(link);
+
+                    var dns = document.createElement('link');
+                    dns.rel = 'dns-prefetch';
+                    dns.href = origin;
+                    document.head.appendChild(dns);
+                });
+
+                // Prefetch auth handler so the popup is less likely to sit blank
+                var prefetch = document.createElement('link');
+                prefetch.rel = 'prefetch';
+                prefetch.href = 'https://' + authDomain + '/__/auth/handler';
+                document.head.appendChild(prefetch);
+            } catch (e) {
+                // Ignore warmup failures
+            }
+        }
+
         function socialLoginByGoogle() {
+            if (authInProgress) return;
             if (typeof firebase === 'undefined' || !firebase.auth) {
                 showAuthError('Firebase auth is not initialized.');
                 return;
             }
 
+            authInProgress = true;
+            showGoogleAuthLoader(
+                'Connecting to Google…',
+                'Please complete sign-in in the popup window.'
+            );
+
             var provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
 
             firebase.auth().signInWithPopup(provider).then(function (authResult) {
+                showGoogleAuthLoader('Signing you in…', 'Almost done, please wait.');
+
                 var email = authResult.user && authResult.user.email ? authResult.user.email : '';
                 if (!email && authResult.user && authResult.user.providerData && authResult.user.providerData[0]) {
                     email = authResult.user.providerData[0].email || '';
@@ -68,7 +200,9 @@
                             } else {
                                 showAuthError(loginRes.message);
                             }
-                        }, 'json');
+                        }, 'json').fail(function () {
+                            showAuthError('Login failed. Please try again.');
+                        });
                     };
 
                     if (verifyRes.error === true) {
@@ -87,12 +221,24 @@
                             } else {
                                 showAuthError(registerRes.message);
                             }
-                        }, 'json');
+                        }, 'json').fail(function () {
+                            showAuthError('Registration failed. Please try again.');
+                        });
                     } else {
                         loginNow();
                     }
-                }, 'json');
+                }, 'json').fail(function () {
+                    showAuthError('Login failed. Please try again.');
+                });
             }).catch(function (error) {
+                if (error && error.code === 'auth/popup-closed-by-user') {
+                    hideGoogleAuthLoader();
+                    return;
+                }
+                if (error && error.code === 'auth/cancelled-popup-request') {
+                    hideGoogleAuthLoader();
+                    return;
+                }
                 showAuthError((error && error.message) ? error.message : null);
             });
         }
@@ -104,6 +250,12 @@
             event.stopImmediatePropagation();
             socialLoginByGoogle();
         }, true);
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', warmFirebaseAuth);
+        } else {
+            warmFirebaseAuth();
+        }
     })();
 </script>
 

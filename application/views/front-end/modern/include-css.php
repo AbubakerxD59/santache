@@ -1,3 +1,8 @@
+<link rel="preconnect" href="https://accounts.google.com" crossorigin>
+<link rel="preconnect" href="https://apis.google.com" crossorigin>
+<link rel="dns-prefetch" href="https://accounts.google.com">
+<link rel="dns-prefetch" href="https://apis.google.com">
+<link rel="dns-prefetch" href="https://www.googleapis.com">
 
 <!-- Favicon -->
 <?php $favicon = get_settings('web_favicon'); ?>
