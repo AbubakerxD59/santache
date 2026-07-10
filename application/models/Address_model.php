@@ -103,10 +103,9 @@ class Address_model extends CI_Model
         } else {
             $this->db->insert('addresses', escape_array($address_data));
             $last_added_id = $this->db->insert_id();
-            if (isset($data['is_default']) && $data['is_default'] == true) {
-                $this->db->where('user_id', $data['user_id'])->set('is_default', '0')->update('addresses');
-                $this->db->where('id', $last_added_id)->set('is_default', '1')->update('addresses');
-            }
+            // Newly created addresses become the default for later use
+            $this->db->where('user_id', $data['user_id'])->set('is_default', '0')->update('addresses');
+            $this->db->where('id', $last_added_id)->set('is_default', '1')->update('addresses');
         }
     }
 

@@ -1072,6 +1072,27 @@ $(document).ready(function () {
     $("#address_id").val(address.id);
     $("#mobile").val(address.mobile);
     var address_id = $("#address_id").val();
+    // Persist selected shipping address as default for later use
+    $.ajax({
+      type: "POST",
+      data: {
+        id: address_id,
+        [csrfName]: csrfHash,
+      },
+      url: base_url + "my-account/set-default-address",
+      dataType: "json",
+      success: function (result) {
+        if (result && result.csrfName) {
+          csrfName = result.csrfName;
+          csrfHash = result.csrfHash;
+        }
+        if (result && result.error == false && Array.isArray(addresses)) {
+          addresses.forEach(function (addr) {
+            addr.is_default = String(addr.id) === String(address_id) ? "1" : "0";
+          });
+        }
+      },
+    });
 
     $.ajax({
       type: "POST",
