@@ -520,7 +520,7 @@ class My_account extends CI_Controller
             $this->Area_model->add_zipcode([
                 'zipcode' => $pincode,
                 'city' => $city_id,
-                'minimum_free_delivery_order_amount' => 500,
+                'minimum_free_delivery_order_amount' => 100,
                 'delivery_charges' => 10,
             ]);
         }
@@ -562,7 +562,7 @@ class My_account extends CI_Controller
 
         $this->Area_model->add_city([
             'city_name' => $city_name,
-            'minimum_free_delivery_order_amount' => 500,
+            'minimum_free_delivery_order_amount' => 100,
             'delivery_charges' => 10,
         ]);
 
