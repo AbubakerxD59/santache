@@ -520,6 +520,25 @@ class Area extends CI_Controller
                         $this->session->set_flashdata('authorize_flag', PERMISSION_ERROR_MSG);
                         redirect('admin/home', 'refresh');
                     }
+                    // Cache city name -> id so CSV can use city_name (IDs follow AUTO_INCREMENT: 1 if empty, else next id)
+                    $city_name_to_id = [];
+                    $cities_for_map = fetch_details('cities', null, 'id,name');
+                    if (!empty($cities_for_map)) {
+                        foreach ($cities_for_map as $city_row) {
+                            $city_name_to_id[strtolower(trim($city_row['name']))] = (int) $city_row['id'];
+                        }
+                    }
+                    $resolve_city_id = function ($city_ref) use ($city_name_to_id) {
+                        $city_ref = trim((string) $city_ref);
+                        if ($city_ref === '') {
+                            return null;
+                        }
+                        if (ctype_digit($city_ref)) {
+                            return is_exist(['id' => $city_ref], 'cities') ? (int) $city_ref : null;
+                        }
+                        $key = strtolower($city_ref);
+                        return isset($city_name_to_id[$key]) ? $city_name_to_id[$key] : null;
+                    };
                     while (($row = fgetcsv($handle, 10000, ",")) != FALSE) {
                         if ($temp != 0) {
                             if (empty($row[0])) {
@@ -530,23 +549,22 @@ class Area extends CI_Controller
                                 print_r(json_encode($this->response));
                                 return false;
                             }
-                            if (empty($row[1])) {
+                            if (!isset($row[1]) || trim((string) $row[1]) === '') {
                                 $this->response['error'] = true;
-                                $this->response['message'] = 'City Id is empty at row ' . $temp;
+                                $this->response['message'] = 'City Id / City Name is empty at row ' . $temp;
                                 $this->response['csrfName'] = $this->security->get_csrf_token_name();
                                 $this->response['csrfHash'] = $this->security->get_csrf_hash();
                                 print_r(json_encode($this->response));
                                 return false;
                             }
-                            if (!empty($row[1]) && $row[1] != "") {
-                                if (!is_exist(['id' => $row[1]], 'cities')) {
-                                    $this->response['error'] = true;
-                                    $this->response['message'] = 'City is not exist in your database at row ' . $temp;
-                                    $this->response['csrfName'] = $this->security->get_csrf_token_name();
-                                    $this->response['csrfHash'] = $this->security->get_csrf_hash();
-                                    print_r(json_encode($this->response));
-                                    return false;
-                                }
+                            $resolved_city_id = $resolve_city_id($row[1]);
+                            if ($resolved_city_id === null) {
+                                $this->response['error'] = true;
+                                $this->response['message'] = 'City is not exist in your database at row ' . $temp;
+                                $this->response['csrfName'] = $this->security->get_csrf_token_name();
+                                $this->response['csrfHash'] = $this->security->get_csrf_hash();
+                                print_r(json_encode($this->response));
+                                return false;
                             }
                             if (empty($row[2])) {
                                 $this->response['error'] = true;
@@ -556,7 +574,7 @@ class Area extends CI_Controller
                                 print_r(json_encode($this->response));
                                 return false;
                             }
-                            if (is_exist(['city_id' => $row[1], 'zipcode' => $row[0]], 'zipcodes')) {
+                            if (is_exist(['city_id' => $resolved_city_id, 'zipcode' => $row[0]], 'zipcodes')) {
                                 $response["error"]   = true;
                                 $response["message"] = "Combination Already Exist ! Provide a unique Combination";
                                 $response['csrfName'] = $this->security->get_csrf_token_name();
@@ -574,7 +592,7 @@ class Area extends CI_Controller
                     while (($row = fgetcsv($handle, 10000, ",")) != FALSE) {
                         if ($temp1 != 0) {
                             $data['zipcode'] = $row[0];
-                            $data['city_id'] = $row[1];
+                            $data['city_id'] = $resolve_city_id($row[1]);
                             $data['minimum_free_delivery_order_amount'] = $row[2];
                             $data['delivery_charges'] = $row[3];
                             $this->db->insert('zipcodes', $data);
