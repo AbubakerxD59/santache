@@ -270,6 +270,30 @@ class Area_model extends CI_Model
         return $data;
     }
 
+    /**
+     * All zipcodes with city_id/name for storefront autocomplete.
+     */
+    function get_zipcodes_with_cities()
+    {
+        $rows = $this->db->select('zipcodes.id, zipcodes.zipcode, zipcodes.city_id, cities.name as city_name')
+            ->join('cities', 'cities.id = zipcodes.city_id', 'left')
+            ->order_by('zipcodes.zipcode', 'ASC')
+            ->get('zipcodes')
+            ->result_array();
+
+        $data = [];
+        foreach ($rows as $row) {
+            $row = output_escaping($row);
+            $data[] = [
+                'id' => $row['id'],
+                'zipcode' => $row['zipcode'],
+                'city_id' => $row['city_id'],
+                'city_name' => $row['city_name'] ?? '',
+            ];
+        }
+        return $data;
+    }
+
 
     function get_zipcodes($search = '', $limit = '', $offset = '')
     {

@@ -87,11 +87,29 @@
                                 <div class="text-danger small address-field-error" data-for="state"></div>
                             </div>
                             <div class="col-md-6 col-sm-12 col-xs-12 form-group">
-                                <label for="city_name"
+                                <label for="city"
                                     class="control-label"><?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'City' ?> <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control address-required" id="city_name" name="city_name"
-                                    placeholder="<?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'City' ?>" />
-                                <div class="text-danger small address-field-error" data-for="city_name"></div>
+                                <select class="form-control address-required" id="city" name="city_id">
+                                    <option value=""><?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'Select City' ?></option>
+                                    <?php if (!empty($cities)) {
+                                        foreach ($cities as $city) { ?>
+                                            <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php }
+                                    } ?>
+                                </select>
+                                <input type="hidden" name="city_name" id="city_name" value="" />
+                                <div class="text-danger small address-field-error" data-for="city"></div>
+                            </div>
+                            <div class="col-md-6 col-sm-12 col-xs-12 form-group">
+                                <label for="zipcode"
+                                    class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control address-required" id="zipcode" name="pincode"
+                                        inputmode="numeric" autocomplete="off" maxlength="10"
+                                        placeholder="e.g. 10001 or 10001-1234" />
+                                    <div id="zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
+                                <div class="text-danger small address-field-error" data-for="zipcode"></div>
                             </div>
 
                             <div class="col-md-12 col-sm-12 col-xs-12 d-none" id="address-additional-section">
@@ -174,6 +192,9 @@
                                     <th data-field="country" data-sortable="false">
                                         <?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?>
                                     </th>
+                                    <th data-field="pincode" data-sortable="false">
+                                        <?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?>
+                                    </th>
                                     <th data-field="action" data-sortable="false">
                                         <?= !empty($this->lang->line('action')) ? $this->lang->line('action') : 'Action' ?>
                                     </th>
@@ -239,11 +260,30 @@
                             <input type="text" class="form-control edit-address-required" id="edit_state" name="state" placeholder="State" />
                             <div class="text-danger small edit-address-field-error" data-for="edit_state"></div>
                         </div>
-                        <div class="col-md-12 col-sm-12 col-xs-12 form-group">
-                            <label for="edit_city_name"
+                        <div class="col-md-6 col-sm-12 col-xs-12 form-group">
+                            <label for="edit_city"
                                 class="control-label"><?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'City' ?> <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control edit-address-required" id="edit_city_name" name="city_name" placeholder="City" />
-                            <div class="text-danger small edit-address-field-error" data-for="edit_city_name"></div>
+                            <select class="form-control edit-address-required" id="edit_city" name="city_id">
+                                <option value=""><?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'Select City' ?></option>
+                                <?php if (!empty($cities)) {
+                                    foreach ($cities as $city) { ?>
+                                        <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php }
+                                } ?>
+                            </select>
+                            <input type="hidden" name="city_name" id="edit_city_name" value="" />
+                            <div class="text-danger small edit-address-field-error" data-for="edit_city"></div>
+                        </div>
+                        <div class="col-md-6 col-sm-12 col-xs-12 form-group">
+                            <label for="edit_zipcode"
+                                class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
+                            <div class="position-relative zipcode-autocomplete-wrap">
+                                <input type="text" class="form-control edit-address-required" id="edit_zipcode" name="pincode"
+                                    inputmode="numeric" autocomplete="off" maxlength="10"
+                                    placeholder="e.g. 10001 or 10001-1234" />
+                                <div id="edit-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                            </div>
+                            <div class="text-danger small edit-address-field-error" data-for="edit_zipcode"></div>
                         </div>
 
                         <div class="col-md-12 col-sm-12 col-xs-12" id="edit-address-additional-section">
@@ -293,14 +333,40 @@
 
 <script type="module" src="<?= base_url('assets/front_end/modern/ionicons/dist/ionicons/ionicons.esm.js') ?>"></script>
 <script nomodule src="<?= base_url('assets/front_end/modern/ionicons/dist/ionicons/ionicons.js') ?>"></script>
+<style>
+.zipcode-autocomplete-wrap { position: relative; }
+.zipcode-suggestions-list {
+    position: absolute; z-index: 1050; left: 0; right: 0; top: 100%;
+    max-height: 220px; overflow-y: auto; margin-top: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.zipcode-suggestion-item { font-size: 0.9rem; cursor: pointer; }
+</style>
+<script>
+window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script src="<?= base_url('assets/front_end/zipcode-autocomplete.js') ?>"></script>
 
 <script>
 (function initAddressPageScript() {
-    if (!window.jQuery) {
+    if (!window.jQuery || !window.AddressZipcodeAutocomplete) {
         return setTimeout(initAddressPageScript, 50);
     }
 
     (function ($) {
+    var addZipBinding = window.AddressZipcodeAutocomplete.bind({
+        zipcodes: window.ADDRESS_ZIPCODES,
+        zipInput: '#zipcode',
+        citySelect: '#city',
+        suggestionsList: '#zipcode-suggestions'
+    });
+    var editZipBinding = window.AddressZipcodeAutocomplete.bind({
+        zipcodes: window.ADDRESS_ZIPCODES,
+        zipInput: '#edit_zipcode',
+        citySelect: '#edit_city',
+        suggestionsList: '#edit-zipcode-suggestions'
+    });
+
     var addressFieldRules = {
         address_name: { validate: function (v) { return v.trim() !== '' || 'Name is required.'; } },
         mobile_number: { validate: function (v) {
@@ -311,7 +377,12 @@
         address: { validate: function (v) { return v.trim() !== '' || 'Address is required.'; } },
         country: { validate: function (v) { return v.trim() !== '' || 'Country is required.'; } },
         state: { validate: function (v) { return v.trim() !== '' || 'State is required.'; } },
-        city_name: { validate: function (v) { return v.trim() !== '' || 'City is required.'; } }
+        city: { validate: function (v) { return v.trim() !== '' || 'City is required.'; } },
+        zipcode: { validate: function (v) {
+            if (v.trim() === '') return 'ZIP Code is required.';
+            if (!/^\d{5}(-\d{4})?$/.test(v.trim())) return 'Enter a valid US ZIP Code (e.g. 10001 or 10001-1234).';
+            return true;
+        }}
     };
 
     function showAddressFieldError(fieldId, message) {
@@ -353,6 +424,8 @@
         $('#add-address-form')[0].reset();
         $('#address_name').val(defaultProfileName);
         $('#mobile_number').val(defaultProfileMobile);
+        $('#city').val('');
+        $('#city_name').val('');
         $('#address-additional-section').addClass('d-none');
         $('input[name="type"][value="home"]').prop('checked', true);
         $('.address-field-error').text('').hide();
@@ -408,7 +481,8 @@
         edit_address: addressFieldRules.address,
         edit_country: addressFieldRules.country,
         edit_state: addressFieldRules.state,
-        edit_city_name: addressFieldRules.city_name
+        edit_city: addressFieldRules.city,
+        edit_zipcode: addressFieldRules.zipcode
     };
 
     function showEditAddressFieldError(fieldId, message) {
@@ -486,7 +560,11 @@
             $("#edit_address").val(row.address);
             $("#edit_state").val(row.state);
             $("#edit_country").val(row.country);
-            $("#edit_city_name").val(row.city);
+            $("#edit_zipcode").val(row.pincode);
+            if (editZipBinding) {
+                editZipBinding.setCityByIdOrName(row.city_id, row.city);
+                editZipBinding.setZipcode(row.pincode);
+            }
             $('#edit-address-form input[name="type"]').prop('checked', false);
             $('#edit-address-form input[name="type"][value="' + (row.type || 'home').toLowerCase() + '"]').prop('checked', true);
         }

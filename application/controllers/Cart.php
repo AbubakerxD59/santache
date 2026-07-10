@@ -503,6 +503,9 @@ class Cart extends CI_Controller
                 }
             }
             $this->data['currency'] = $currency;
+            $this->data['cities'] = get_cities();
+            $this->load->model('Area_model');
+            $this->data['zipcodes'] = $this->Area_model->get_zipcodes_with_cities();
             $this->load->view('front-end/' . THEME . '/template', $this->data);
         } else {
             redirect(base_url());

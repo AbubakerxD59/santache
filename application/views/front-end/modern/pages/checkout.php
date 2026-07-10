@@ -63,7 +63,17 @@
                                 <div class="selected-address">
                                     <p id="address-name-type"><?= isset($default_address) && !empty($default_address) ? $default_address[0]['name'] . ' - ' . ucfirst($default_address[0]['type']) : 'No address selected' ?></p>
                                     <p id="address-full"><?= isset($default_address) && !empty($default_address) ? trim($default_address[0]['address']) : '' ?></p>
-                                    <p id="address-country"><?= isset($default_address) && !empty($default_address) ? trim((!empty($default_address[0]['state']) ? $default_address[0]['state'] : '') . (!empty($default_address[0]['city']) ? ' , ' . $default_address[0]['city'] : '') . (!empty($default_address[0]['country']) ? ' , ' . $default_address[0]['country'] : '')) : '' ?></p>
+                                    <p id="address-country"><?php
+                                        if (isset($default_address) && !empty($default_address)) {
+                                            $address_line_two = array_filter([
+                                                $default_address[0]['city'] ?? '',
+                                                $default_address[0]['state'] ?? '',
+                                                $default_address[0]['pincode'] ?? '',
+                                                $default_address[0]['country'] ?? '',
+                                            ]);
+                                            echo htmlspecialchars(implode(', ', $address_line_two), ENT_QUOTES, 'UTF-8');
+                                        }
+                                    ?></p>
                                     <p class="text-muted" id="address-mobile"><?= isset($default_address) && !empty($default_address) ? $default_address[0]['mobile'] : '' ?></p>
                                 </div>
 
@@ -689,8 +699,25 @@
                                 <input type="text" class="form-control" id="checkout_state" name="state" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="checkout_city_name" class="form-label"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
-                                <input type="text" class="form-control" id="checkout_city_name" name="city_name" required>
+                                <label for="checkout_city" class="form-label"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
+                                <select class="form-control" id="checkout_city" name="city_id" required>
+                                    <option value=""><?= label('city', 'Select City') ?></option>
+                                    <?php if (!empty($cities)) {
+                                        foreach ($cities as $city) { ?>
+                                            <option value="<?= $city['id'] ?>"><?= htmlspecialchars($city['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php }
+                                    } ?>
+                                </select>
+                                <input type="hidden" name="city_name" id="checkout_city_name" value="" />
+                            </div>
+                            <div class="col-md-6">
+                                <label for="checkout_pincode" class="form-label"><?= label('zipcode', 'ZIP Code') ?> <sup class="text-danger">*</sup></label>
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control" id="checkout_pincode" name="pincode"
+                                        inputmode="numeric" autocomplete="off" maxlength="10"
+                                        placeholder="e.g. 10001 or 10001-1234" pattern="^\d{5}(-\d{4})?$" required>
+                                    <div id="checkout-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_alternate_mobile" class="form-label"><?= label('alternate_mobile', 'Alternate Mobile') ?></label>
@@ -799,4 +826,17 @@ if (isset($payment_methods['midtrans_payment_mode'])) {
 <script src="<?= base_url('assets/front_end/modern/js/jquery.min.js') ?>"></script>
 <script src="<?= base_url('assets/front_end/modern/js/moment.min.js') ?>"></script>
 <script src="<?= base_url('assets/front_end/modern/js/daterangepicker.js') ?>"></script>
+<style>
+.zipcode-autocomplete-wrap { position: relative; }
+.zipcode-suggestions-list {
+    position: absolute; z-index: 1050; left: 0; right: 0; top: 100%;
+    max-height: 220px; overflow-y: auto; margin-top: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.zipcode-suggestion-item { font-size: 0.9rem; cursor: pointer; }
+</style>
+<script>
+window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script src="<?= base_url('assets/front_end/zipcode-autocomplete.js') ?>"></script>
 <script src="<?= base_url('assets/front_end/modern/js/checkout.js') ?>"></script>

@@ -80,7 +80,39 @@ function populateEditAddressForm(row) {
   $("#edit_address").val(row.address);
   $("#edit_state").val(row.state);
   $("#edit_country").val(row.country);
-  $("#edit_city_name").val(row.city);
+  $("#edit_zipcode").val(row.pincode);
+  if ($("#edit_city").length) {
+    var matched = false;
+    if (row.city_id) {
+      $("#edit_city").val(String(row.city_id));
+      matched = !!$("#edit_city").val();
+    }
+    if (!matched && row.city) {
+      $("#edit_city option").each(function () {
+        if ($(this).text().trim().toLowerCase() === String(row.city).trim().toLowerCase()) {
+          $("#edit_city").val($(this).val());
+          matched = true;
+          return false;
+        }
+      });
+    }
+    if (!matched) {
+      $("#edit_city").val("");
+    }
+    var selectedName = $("#edit_city option:selected").val()
+      ? $("#edit_city option:selected").text().trim()
+      : (row.city || "");
+    $("#edit_city_name").val(selectedName);
+    if (window.AddressZipcodeAutocomplete && window.ADDRESS_ZIPCODES) {
+      var match = window.AddressZipcodeAutocomplete.findZipMatch(window.ADDRESS_ZIPCODES, row.pincode);
+      if (match && match.city_id) {
+        $("#edit_city").val(String(match.city_id));
+        $("#edit_city_name").val(match.city_name || $("#edit_city option:selected").text().trim());
+      }
+    }
+  } else {
+    $("#edit_city_name").val(row.city);
+  }
   $('#edit-address-form input[name="type"]').prop('checked', false);
   $('#edit-address-form input[name="type"][value="' + (row.type || 'home').toLowerCase() + '"]').prop('checked', true);
 }

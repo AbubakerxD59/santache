@@ -14,6 +14,20 @@ $(document).ready(function () {
     timerProgressBar: true,
   });
 
+  function initCheckoutZipAutocomplete() {
+    if (window.AddressZipcodeAutocomplete) {
+      window.AddressZipcodeAutocomplete.bind({
+        zipcodes: window.ADDRESS_ZIPCODES || [],
+        zipInput: "#checkout_pincode",
+        citySelect: "#checkout_city",
+        suggestionsList: "#checkout-zipcode-suggestions",
+      });
+    } else {
+      setTimeout(initCheckoutZipAutocomplete, 50);
+    }
+  }
+  initCheckoutZipAutocomplete();
+
   var addresses = [];
   let newlyCreatedAddressId = null;
 
@@ -39,7 +53,7 @@ $(document).ready(function () {
 
   function getAddressLineTwo(a) {
     if (!a) return "";
-    return formatAddressLine([a.state, a.city, a.country]).join(", ");
+    return formatAddressLine([a.city, a.state, a.pincode, a.country]).join(", ");
   }
 
   function midtrans_setup(midtrans_transaction_token) {
@@ -1566,6 +1580,25 @@ $(document).ready(function () {
 
   $("#checkout-create-address-form").on("submit", function (event) {
     event.preventDefault();
+
+    if (!$("#checkout_city").val()) {
+      Toast.fire({
+        icon: "error",
+        title: "Please select a city.",
+      });
+      $("#checkout_city").focus();
+      return false;
+    }
+
+    var zipcode = ($("#checkout_pincode").val() || "").trim();
+    if (!/^\d{5}(-\d{4})?$/.test(zipcode)) {
+      Toast.fire({
+        icon: "error",
+        title: "Enter a valid US ZIP Code (e.g. 10001 or 10001-1234).",
+      });
+      $("#checkout_pincode").focus();
+      return false;
+    }
 
     var formdata = new FormData(this);
     formdata.append(csrfName, csrfHash);

@@ -488,11 +488,48 @@ class My_account extends CI_Controller
             $this->data['keywords'] = 'Address, ' . $this->data['web_settings']['meta_keywords'];
             $this->data['description'] = 'Address | ' . $this->data['web_settings']['meta_description'];
             $this->data['cities'] = get_cities();
+            $this->data['zipcodes'] = $this->Area_model->get_zipcodes_with_cities();
             $this->data['areas'] = fetch_details('areas', NULL);
             $this->load->view('front-end/' . THEME . '/template', $this->data);
         } else {
             redirect(base_url(), 'refresh');
         }
+    }
+
+    /**
+     * Ensure ZIP exists in zipcodes; create with selected city if missing.
+     */
+    private function ensure_zipcode_for_city($pincode, $city_id)
+    {
+        $pincode = trim((string) $pincode);
+        $city_id = (int) $city_id;
+        if ($pincode === '' || $city_id <= 0) {
+            return;
+        }
+
+        $existing = fetch_details('zipcodes', ['zipcode' => $pincode], 'id');
+        if (empty($existing)) {
+            // Also try 5-digit base (e.g. 10001-1234 → 10001)
+            $base = preg_match('/^(\d{5})/', $pincode, $m) ? $m[1] : $pincode;
+            if ($base !== $pincode) {
+                $existing = fetch_details('zipcodes', ['zipcode' => $base], 'id');
+            }
+        }
+
+        if (empty($existing)) {
+            $this->Area_model->add_zipcode([
+                'zipcode' => $pincode,
+                'city' => $city_id,
+                'minimum_free_delivery_order_amount' => 500,
+                'delivery_charges' => 10,
+            ]);
+        }
+    }
+
+    private function resolve_city_name_from_id($city_id)
+    {
+        $city = fetch_details('cities', ['id' => (int) $city_id], 'name');
+        return !empty($city[0]['name']) ? $city[0]['name'] : '';
     }
     public function get_cities()
     {
@@ -536,9 +573,11 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('alternate_mobile', 'Alternative Mobile', 'trim|numeric|xss_clean');
             $this->form_validation->set_rules('address', 'Address', 'trim|xss_clean|required');
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
-            $this->form_validation->set_rules('city_name', 'City', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
             $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
+            $this->form_validation->set_message('regex_match', 'The {field} must be a valid US ZIP Code (e.g. 10001 or 10001-1234).');
             $this->form_validation->set_rules('latitude', 'Latitude', 'trim|xss_clean');
             $this->form_validation->set_rules('longitude', 'Longitude', 'trim|xss_clean');
 
@@ -554,7 +593,17 @@ class My_account extends CI_Controller
             if (empty($arr['type'])) {
                 $arr['type'] = 'home';
             }
-            $arr['city_id'] = 0;
+            $arr['city_id'] = (int) $arr['city_id'];
+            if (!is_exist(['id' => $arr['city_id']], 'cities')) {
+                $this->response['error'] = true;
+                $this->response['message'] = 'Please select a valid city.';
+                $this->response['data'] = array();
+                print_r(json_encode($this->response));
+                return false;
+            }
+            $this->ensure_zipcode_for_city($arr['pincode'], $arr['city_id']);
+            $arr['city_name'] = $this->resolve_city_name_from_id($arr['city_id']);
+            unset($arr['pincode_name']);
             $arr['user_id'] = $this->data['user']->id;
             $this->address_model->set_address($arr);
             $res = $this->address_model->get_address($this->data['user']->id, false, true);
@@ -586,9 +635,11 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('alternate_mobile', 'Alternative Mobile', 'trim|numeric|xss_clean');
             $this->form_validation->set_rules('address', 'Address', 'trim|xss_clean|required');
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
-            $this->form_validation->set_rules('city_name', 'City', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
             $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
+            $this->form_validation->set_message('regex_match', 'The {field} must be a valid US ZIP Code (e.g. 10001 or 10001-1234).');
 
             if (!$this->form_validation->run()) {
                 $this->response['error'] = true;
@@ -599,10 +650,22 @@ class My_account extends CI_Controller
                 print_r(json_encode($this->response));
                 return false;
             }
-            $_POST['city_id'] = 0;
+            $_POST['city_id'] = (int) $_POST['city_id'];
+            if (!is_exist(['id' => $_POST['city_id']], 'cities')) {
+                $this->response['error'] = true;
+                $this->response['message'] = 'Please select a valid city.';
+                $this->response['csrfName'] = $this->security->get_csrf_token_name();
+                $this->response['csrfHash'] = $this->security->get_csrf_hash();
+                $this->response['data'] = array();
+                print_r(json_encode($this->response));
+                return false;
+            }
             if (empty($_POST['type'])) {
                 $_POST['type'] = 'home';
             }
+            $this->ensure_zipcode_for_city($_POST['pincode'], $_POST['city_id']);
+            $_POST['city_name'] = $this->resolve_city_name_from_id($_POST['city_id']);
+            unset($_POST['pincode_name']);
             $this->address_model->set_address($_POST);
             $res = $this->address_model->get_address(null, $_POST['id'], true);
             $this->response['error'] = false;
