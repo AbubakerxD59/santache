@@ -83,21 +83,23 @@
                                             placeholder="<?= label('alternate_mobile', 'Alternate Mobile') ?>">
                                     </div>
                                     <div>
-                                        <label class="form-label"><?= label('type', 'Type') ?></label>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="home" value="home" checked />
-                                            <label for="home"
-                                                class="form-check-label text-dark"><?= label('home', 'Home') ?></label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="office" value="office" />
-                                            <label for="office"
-                                                class="form-check-label text-dark"><?= label('office', 'Office') ?></label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="other" value="other" />
-                                            <label for="other"
-                                                class="form-check-label text-dark"><?= label('other', 'Other') ?></label>
+                                        <label class="form-label d-block"><?= label('type', 'Type') ?></label>
+                                        <div class="address-type-options">
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="home" value="home" checked />
+                                                <label for="home"
+                                                    class="form-check-label text-dark"><?= label('home', 'Home') ?></label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="office" value="office" />
+                                                <label for="office"
+                                                    class="form-check-label text-dark"><?= label('office', 'Office') ?></label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="other" value="other" />
+                                                <label for="other"
+                                                    class="form-check-label text-dark"><?= label('other', 'Other') ?></label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -227,7 +229,7 @@
                                             <input type="text" class="form-control shadow-none" id="edit_alternate_mobile" name="alternate_mobile" placeholder="Enter Alternate Mobile" />
                                         </div>
                                         <label class="form-label fw-semibold small text-uppercase fw-bold mb-3 d-block"><?= label('address_type', 'Address Type') ?></label>
-                                        <div class="btn-group w-100" role="group" aria-label="Address Type Selection">
+                                        <div class="address-type-options btn-group w-100" role="group" aria-label="Address Type Selection">
                                             <input type="radio" class="btn-check" name="type" id="edit_home" value="home" autocomplete="off" checked>
                                             <label class="btn btn-outline-primary py-2" for="edit_home"><?= label('home', 'Home') ?></label>
 

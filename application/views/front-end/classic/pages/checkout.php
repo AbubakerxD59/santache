@@ -855,17 +855,19 @@
                 </div>
                 <div class="col-12 form-group">
                     <label class="d-block mb-2"><?= !empty($this->lang->line('type')) ? $this->lang->line('type') : 'Type' ?></label>
-                    <div class="form-check form-check-inline">
-                        <input type="radio" class="form-check-input" name="type" id="checkout_type_home" value="home" checked>
-                        <label class="form-check-label" for="checkout_type_home"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input type="radio" class="form-check-input" name="type" id="checkout_type_office" value="office">
-                        <label class="form-check-label" for="checkout_type_office"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input type="radio" class="form-check-input" name="type" id="checkout_type_other" value="other">
-                        <label class="form-check-label" for="checkout_type_other"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                    <div class="address-type-options">
+                        <div class="form-check form-check-inline">
+                            <input type="radio" class="form-check-input" name="type" id="checkout_type_home" value="home" checked>
+                            <label class="form-check-label" for="checkout_type_home"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input type="radio" class="form-check-input" name="type" id="checkout_type_office" value="office">
+                            <label class="form-check-label" for="checkout_type_office"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input type="radio" class="form-check-input" name="type" id="checkout_type_other" value="other">
+                            <label class="form-check-label" for="checkout_type_other"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                        </div>
                     </div>
                 </div>
             </div>

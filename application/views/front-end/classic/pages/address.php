@@ -120,21 +120,23 @@
                                                 placeholder="<?= !empty($this->lang->line('alternate_mobile')) ? $this->lang->line('alternate_mobile') : 'Alternate Mobile' ?>" />
                                         </div>
                                         <div class="form-group mb-0">
-                                            <label class="control-label"><?= !empty($this->lang->line('type')) ? $this->lang->line('type') : 'Type' ?></label>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" class="form-check-input" name="type" id="home" value="home" checked />
-                                                <label for="home"
-                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
-                                            </div>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" class="form-check-input" name="type" id="office" value="office" />
-                                                <label for="office"
-                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
-                                            </div>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" class="form-check-input" name="type" id="other" value="other" />
-                                                <label for="other"
-                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                                            <label class="control-label d-block"><?= !empty($this->lang->line('type')) ? $this->lang->line('type') : 'Type' ?></label>
+                                            <div class="address-type-options">
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" class="form-check-input" name="type" id="home" value="home" checked />
+                                                    <label for="home"
+                                                        class="form-check-label text-dark"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" class="form-check-input" name="type" id="office" value="office" />
+                                                    <label for="office"
+                                                        class="form-check-label text-dark"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" class="form-check-input" name="type" id="other" value="other" />
+                                                    <label for="other"
+                                                        class="form-check-label text-dark"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -291,21 +293,23 @@
                                             placeholder="Alternate Mobile" />
                                     </div>
                                     <div class="form-group mb-0">
-                                        <label class="control-label"><?= !empty($this->lang->line('type')) ? $this->lang->line('type') : 'Type' ?></label>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="edit_home" value="home" checked />
-                                            <label for="edit_home"
-                                                class="form-check-label text-dark"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="edit_office" value="office" />
-                                            <label for="edit_office"
-                                                class="form-check-label text-dark"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input type="radio" class="form-check-input" name="type" id="edit_other" value="other" />
-                                            <label for="edit_other"
-                                                class="form-check-label text-dark"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                                        <label class="control-label d-block"><?= !empty($this->lang->line('type')) ? $this->lang->line('type') : 'Type' ?></label>
+                                        <div class="address-type-options">
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="edit_home" value="home" checked />
+                                                <label for="edit_home"
+                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('home')) ? $this->lang->line('home') : 'Home' ?></label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="edit_office" value="office" />
+                                                <label for="edit_office"
+                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('office')) ? $this->lang->line('office') : 'Office' ?></label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" class="form-check-input" name="type" id="edit_other" value="other" />
+                                                <label for="edit_other"
+                                                    class="form-check-label text-dark"><?= !empty($this->lang->line('other')) ? $this->lang->line('other') : 'Other' ?></label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

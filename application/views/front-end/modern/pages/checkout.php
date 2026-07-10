@@ -688,17 +688,19 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label d-block"><?= label('type', 'Type') ?></label>
-                                <div class="form-check form-check-inline">
-                                    <input type="radio" class="form-check-input" name="type" id="checkout_type_home" value="home" checked>
-                                    <label class="form-check-label" for="checkout_type_home"><?= label('home', 'Home') ?></label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input type="radio" class="form-check-input" name="type" id="checkout_type_office" value="office">
-                                    <label class="form-check-label" for="checkout_type_office"><?= label('office', 'Office') ?></label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input type="radio" class="form-check-input" name="type" id="checkout_type_other" value="other">
-                                    <label class="form-check-label" for="checkout_type_other"><?= label('other', 'Other') ?></label>
+                                <div class="address-type-options">
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" class="form-check-input" name="type" id="checkout_type_home" value="home" checked>
+                                        <label class="form-check-label" for="checkout_type_home"><?= label('home', 'Home') ?></label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" class="form-check-input" name="type" id="checkout_type_office" value="office">
+                                        <label class="form-check-label" for="checkout_type_office"><?= label('office', 'Office') ?></label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" class="form-check-input" name="type" id="checkout_type_other" value="other">
+                                        <label class="form-check-label" for="checkout_type_other"><?= label('other', 'Other') ?></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

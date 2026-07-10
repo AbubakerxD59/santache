@@ -10915,3 +10915,50 @@ a.grid-view {
 }
 
 
+
+/* Address type radios: override global label width/grid that wraps Home/Office/Other */
+.address-type-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+}
+
+.address-type-options.btn-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0;
+}
+
+.address-type-options .form-check-inline {
+    display: inline-flex !important;
+    align-items: center;
+    margin-right: 0;
+    margin-bottom: 0;
+    padding-left: 0;
+    width: auto !important;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.address-type-options .form-check-input {
+    position: static !important;
+    float: none !important;
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0.4rem !important;
+    width: 1em !important;
+    flex-shrink: 0;
+}
+
+.address-type-options .form-check-label,
+.address-type-options > .btn {
+    display: inline-block !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    grid-template-columns: none !important;
+}
