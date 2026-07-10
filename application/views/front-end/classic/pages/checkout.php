@@ -854,11 +854,20 @@
                 </div>
                 <div class="col-md-6 form-group">
                     <label for="checkout_country"><?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?> <sup class="text-danger">*</sup></label>
-                    <input type="text" class="form-control" id="checkout_country" name="country" required>
+                    <input type="text" class="form-control" id="checkout_country" name="country" value="United States" readonly required>
                 </div>
                 <div class="col-md-6 form-group">
                     <label for="checkout_state"><?= !empty($this->lang->line('state')) ? $this->lang->line('state') : 'State' ?> <sup class="text-danger">*</sup></label>
                     <input type="text" class="form-control" id="checkout_state" name="state" required>
+                </div>
+                <div class="col-md-6 form-group">
+                    <label for="checkout_pincode"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <sup class="text-danger">*</sup></label>
+                    <div class="position-relative zipcode-autocomplete-wrap">
+                        <input type="text" class="form-control" id="checkout_pincode" name="pincode"
+                            inputmode="numeric" autocomplete="off" maxlength="10"
+                            placeholder="e.g. 10001 or 10001-1234" pattern="^\d{5}(-\d{4})?$" required>
+                        <div id="checkout-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                    </div>
                 </div>
                 <div class="col-md-6 form-group">
                     <label for="checkout_city"><?= !empty($this->lang->line('city')) ? $this->lang->line('city') : 'City' ?> <sup class="text-danger">*</sup></label>
@@ -871,15 +880,6 @@
                         } ?>
                     </select>
                     <input type="hidden" name="city_name" id="checkout_city_name" value="" />
-                </div>
-                <div class="col-md-6 form-group">
-                    <label for="checkout_pincode"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <sup class="text-danger">*</sup></label>
-                    <div class="position-relative zipcode-autocomplete-wrap">
-                        <input type="text" class="form-control" id="checkout_pincode" name="pincode"
-                            inputmode="numeric" autocomplete="off" maxlength="10"
-                            placeholder="e.g. 10001 or 10001-1234" pattern="^\d{5}(-\d{4})?$" required>
-                        <div id="checkout-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                    </div>
                 </div>
                 <div class="col-md-6 form-group">
                     <label for="checkout_alternate_mobile"><?= !empty($this->lang->line('alternate_mobile')) ? $this->lang->line('alternate_mobile') : 'Alternate Mobile' ?></label>

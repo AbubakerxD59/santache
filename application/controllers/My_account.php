@@ -575,7 +575,7 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
             $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
-            $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required|in_list[United States]');
             $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
             $this->form_validation->set_message('regex_match', 'The {field} must be a valid US ZIP Code (e.g. 10001 or 10001-1234).');
             $this->form_validation->set_rules('latitude', 'Latitude', 'trim|xss_clean');
@@ -593,6 +593,7 @@ class My_account extends CI_Controller
             if (empty($arr['type'])) {
                 $arr['type'] = 'home';
             }
+            $arr['country'] = 'United States';
             $arr['city_id'] = (int) $arr['city_id'];
             if (!is_exist(['id' => $arr['city_id']], 'cities')) {
                 $this->response['error'] = true;
@@ -637,7 +638,7 @@ class My_account extends CI_Controller
             $this->form_validation->set_rules('landmark', 'Landmark', 'trim|xss_clean');
             $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean|required|numeric|greater_than[0]');
             $this->form_validation->set_rules('state', 'State', 'trim|xss_clean|required');
-            $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required');
+            $this->form_validation->set_rules('country', 'Country', 'trim|xss_clean|required|in_list[United States]');
             $this->form_validation->set_rules('pincode', 'ZIP Code', 'trim|xss_clean|required|regex_match[/^\d{5}(-\d{4})?$/]');
             $this->form_validation->set_message('regex_match', 'The {field} must be a valid US ZIP Code (e.g. 10001 or 10001-1234).');
 
@@ -651,6 +652,7 @@ class My_account extends CI_Controller
                 return false;
             }
             $_POST['city_id'] = (int) $_POST['city_id'];
+            $_POST['country'] = 'United States';
             if (!is_exist(['id' => $_POST['city_id']], 'cities')) {
                 $this->response['error'] = true;
                 $this->response['message'] = 'Please select a valid city.';

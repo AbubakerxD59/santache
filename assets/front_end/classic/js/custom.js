@@ -2295,7 +2295,7 @@ $(document).ready(function () {
             $("#edit_alternate_mobile").val(row.alternate_mobile);
             $("#edit_address").val(row.address);
             $("#edit_state").val(row.state);
-            $("#edit_country").val(row.country);
+            $("#edit_country").val("United States");
             $("#edit_zipcode").val(row.pincode);
             if ($("#edit_city").length) {
                 var matched = false;

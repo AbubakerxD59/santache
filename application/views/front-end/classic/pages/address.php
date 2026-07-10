@@ -76,7 +76,7 @@
                                 <label for="country"
                                     class="control-label"><?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control address-required" name="country" id="country"
-                                    placeholder="<?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?>" />
+                                    value="United States" readonly />
                                 <div class="text-danger small address-field-error" data-for="country"></div>
                             </div>
                             <div class="col-md-6 col-sm-12 col-xs-12 form-group">
@@ -85,6 +85,17 @@
                                 <input type="text" class="form-control address-required" id="state" name="state"
                                     placeholder="<?= !empty($this->lang->line('state')) ? $this->lang->line('state') : 'State' ?>" />
                                 <div class="text-danger small address-field-error" data-for="state"></div>
+                            </div>
+                            <div class="col-md-6 col-sm-12 col-xs-12 form-group">
+                                <label for="zipcode"
+                                    class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control address-required" id="zipcode" name="pincode"
+                                        inputmode="numeric" autocomplete="off" maxlength="10"
+                                        placeholder="e.g. 10001 or 10001-1234" />
+                                    <div id="zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
+                                <div class="text-danger small address-field-error" data-for="zipcode"></div>
                             </div>
                             <div class="col-md-6 col-sm-12 col-xs-12 form-group">
                                 <label for="city"
@@ -99,17 +110,6 @@
                                 </select>
                                 <input type="hidden" name="city_name" id="city_name" value="" />
                                 <div class="text-danger small address-field-error" data-for="city"></div>
-                            </div>
-                            <div class="col-md-6 col-sm-12 col-xs-12 form-group">
-                                <label for="zipcode"
-                                    class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
-                                <div class="position-relative zipcode-autocomplete-wrap">
-                                    <input type="text" class="form-control address-required" id="zipcode" name="pincode"
-                                        inputmode="numeric" autocomplete="off" maxlength="10"
-                                        placeholder="e.g. 10001 or 10001-1234" />
-                                    <div id="zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                                </div>
-                                <div class="text-danger small address-field-error" data-for="zipcode"></div>
                             </div>
 
                             <div class="col-md-12 col-sm-12 col-xs-12 d-none" id="address-additional-section">
@@ -251,7 +251,7 @@
                             <label for="country"
                                 class="control-label"><?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?> <span class="text-danger">*</span></label>
                             <input type="text" class="form-control edit-address-required" name="country" id="edit_country"
-                                placeholder="Country" />
+                                value="United States" readonly />
                             <div class="text-danger small edit-address-field-error" data-for="edit_country"></div>
                         </div>
                         <div class="col-md-6 col-sm-12 col-xs-12 form-group">
@@ -259,6 +259,17 @@
                                 class="control-label"><?= !empty($this->lang->line('state')) ? $this->lang->line('state') : 'State' ?> <span class="text-danger">*</span></label>
                             <input type="text" class="form-control edit-address-required" id="edit_state" name="state" placeholder="State" />
                             <div class="text-danger small edit-address-field-error" data-for="edit_state"></div>
+                        </div>
+                        <div class="col-md-6 col-sm-12 col-xs-12 form-group">
+                            <label for="edit_zipcode"
+                                class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
+                            <div class="position-relative zipcode-autocomplete-wrap">
+                                <input type="text" class="form-control edit-address-required" id="edit_zipcode" name="pincode"
+                                    inputmode="numeric" autocomplete="off" maxlength="10"
+                                    placeholder="e.g. 10001 or 10001-1234" />
+                                <div id="edit-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                            </div>
+                            <div class="text-danger small edit-address-field-error" data-for="edit_zipcode"></div>
                         </div>
                         <div class="col-md-6 col-sm-12 col-xs-12 form-group">
                             <label for="edit_city"
@@ -273,17 +284,6 @@
                             </select>
                             <input type="hidden" name="city_name" id="edit_city_name" value="" />
                             <div class="text-danger small edit-address-field-error" data-for="edit_city"></div>
-                        </div>
-                        <div class="col-md-6 col-sm-12 col-xs-12 form-group">
-                            <label for="edit_zipcode"
-                                class="control-label"><?= !empty($this->lang->line('zipcode')) ? $this->lang->line('zipcode') : 'ZIP Code' ?> <span class="text-danger">*</span></label>
-                            <div class="position-relative zipcode-autocomplete-wrap">
-                                <input type="text" class="form-control edit-address-required" id="edit_zipcode" name="pincode"
-                                    inputmode="numeric" autocomplete="off" maxlength="10"
-                                    placeholder="e.g. 10001 or 10001-1234" />
-                                <div id="edit-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                            </div>
-                            <div class="text-danger small edit-address-field-error" data-for="edit_zipcode"></div>
                         </div>
 
                         <div class="col-md-12 col-sm-12 col-xs-12" id="edit-address-additional-section">
@@ -377,12 +377,12 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         address: { validate: function (v) { return v.trim() !== '' || 'Address is required.'; } },
         country: { validate: function (v) { return v.trim() !== '' || 'Country is required.'; } },
         state: { validate: function (v) { return v.trim() !== '' || 'State is required.'; } },
-        city: { validate: function (v) { return v.trim() !== '' || 'City is required.'; } },
         zipcode: { validate: function (v) {
             if (v.trim() === '') return 'ZIP Code is required.';
             if (!/^\d{5}(-\d{4})?$/.test(v.trim())) return 'Enter a valid US ZIP Code (e.g. 10001 or 10001-1234).';
             return true;
-        }}
+        }},
+        city: { validate: function (v) { return v.trim() !== '' || 'City is required.'; } }
     };
 
     function showAddressFieldError(fieldId, message) {
@@ -424,6 +424,7 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         $('#add-address-form')[0].reset();
         $('#address_name').val(defaultProfileName);
         $('#mobile_number').val(defaultProfileMobile);
+        $('#country').val('United States');
         $('#city').val('');
         $('#city_name').val('');
         $('#address-additional-section').addClass('d-none');
@@ -481,8 +482,8 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         edit_address: addressFieldRules.address,
         edit_country: addressFieldRules.country,
         edit_state: addressFieldRules.state,
-        edit_city: addressFieldRules.city,
-        edit_zipcode: addressFieldRules.zipcode
+        edit_zipcode: addressFieldRules.zipcode,
+        edit_city: addressFieldRules.city
     };
 
     function showEditAddressFieldError(fieldId, message) {
@@ -559,7 +560,7 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
             $("#edit_alternate_mobile").val(row.alternate_mobile);
             $("#edit_address").val(row.address);
             $("#edit_state").val(row.state);
-            $("#edit_country").val(row.country);
+            $("#edit_country").val("United States");
             $("#edit_zipcode").val(row.pincode);
             if (editZipBinding) {
                 editZipBinding.setCityByIdOrName(row.city_id, row.city);

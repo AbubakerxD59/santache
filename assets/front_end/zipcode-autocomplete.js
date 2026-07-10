@@ -89,15 +89,11 @@
           return;
         }
         matches.forEach(function (item) {
-          var label = item.zipcode;
-          if (item.city_name) {
-            label += " — " + item.city_name;
-          }
           var $item = $("<button/>", {
             type: "button",
             class:
               "list-group-item list-group-item-action zipcode-suggestion-item",
-            text: label,
+            text: item.zipcode,
             "data-zipcode": item.zipcode,
             "data-city-id": item.city_id || "",
           });

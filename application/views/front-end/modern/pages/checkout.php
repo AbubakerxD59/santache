@@ -692,11 +692,20 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_country" class="form-label"><?= label('country', 'Country') ?> <sup class="text-danger">*</sup></label>
-                                <input type="text" class="form-control" id="checkout_country" name="country" required>
+                                <input type="text" class="form-control" id="checkout_country" name="country" value="United States" readonly required>
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_state" class="form-label"><?= label('state', 'State') ?> <sup class="text-danger">*</sup></label>
                                 <input type="text" class="form-control" id="checkout_state" name="state" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="checkout_pincode" class="form-label"><?= label('zipcode', 'ZIP Code') ?> <sup class="text-danger">*</sup></label>
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control" id="checkout_pincode" name="pincode"
+                                        inputmode="numeric" autocomplete="off" maxlength="10"
+                                        placeholder="e.g. 10001 or 10001-1234" pattern="^\d{5}(-\d{4})?$" required>
+                                    <div id="checkout-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_city" class="form-label"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
@@ -709,15 +718,6 @@
                                     } ?>
                                 </select>
                                 <input type="hidden" name="city_name" id="checkout_city_name" value="" />
-                            </div>
-                            <div class="col-md-6">
-                                <label for="checkout_pincode" class="form-label"><?= label('zipcode', 'ZIP Code') ?> <sup class="text-danger">*</sup></label>
-                                <div class="position-relative zipcode-autocomplete-wrap">
-                                    <input type="text" class="form-control" id="checkout_pincode" name="pincode"
-                                        inputmode="numeric" autocomplete="off" maxlength="10"
-                                        placeholder="e.g. 10001 or 10001-1234" pattern="^\d{5}(-\d{4})?$" required>
-                                    <div id="checkout-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="checkout_alternate_mobile" class="form-label"><?= label('alternate_mobile', 'Alternate Mobile') ?></label>

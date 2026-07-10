@@ -1017,6 +1017,7 @@ $(document).ready(function () {
 
   $(document).on("click", "#open-create-address-modal", function () {
     $("#checkout-create-address-form")[0].reset();
+    $("#checkout_country").val("United States");
     $("#checkout_type_home").prop("checked", true);
     const userName = ($("#username").val() || "").trim();
     const selectedMobile = ($("#address-mobile").text() || "").trim();

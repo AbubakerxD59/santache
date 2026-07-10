@@ -39,7 +39,7 @@
                             <label for="country" class="form-label"><?= label('country', 'Country') ?> <sup
                                     class="text-danger fw-bold">*</sup></label>
                             <input type="text" class="form-control address-required" id="country" name="country"
-                                placeholder="<?= !empty($this->lang->line('country')) ? $this->lang->line('country') : 'Country' ?>">
+                                value="United States" readonly>
                             <div class="invalid-feedback d-block address-field-error" data-for="country"></div>
                         </div>
                         <div class="mb-3 col-md-6">
@@ -48,6 +48,17 @@
                             <input type="text" class="form-control address-required" id="state" name="state"
                                 placeholder="<?= !empty($this->lang->line('state')) ? $this->lang->line('state') : 'State' ?>">
                             <div class="invalid-feedback d-block address-field-error" data-for="state"></div>
+                        </div>
+                        <div class="mb-3 col-md-6">
+                            <label for="zipcode" class="form-label"><?= label('zipcode', 'ZIP Code') ?> <sup
+                                    class="text-danger fw-bold">*</sup></label>
+                            <div class="position-relative zipcode-autocomplete-wrap">
+                                <input type="text" class="form-control address-required" id="zipcode" name="pincode"
+                                    inputmode="numeric" autocomplete="off" maxlength="10"
+                                    placeholder="e.g. 10001 or 10001-1234">
+                                <div id="zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                            </div>
+                            <div class="invalid-feedback d-block address-field-error" data-for="zipcode"></div>
                         </div>
                         <div class="mb-3 col-md-6">
                             <label for="city" class="form-label"><?= label('city', 'City') ?> <sup
@@ -62,17 +73,6 @@
                             </select>
                             <input type="hidden" name="city_name" id="city_name" value="" />
                             <div class="invalid-feedback d-block address-field-error" data-for="city"></div>
-                        </div>
-                        <div class="mb-3 col-md-6">
-                            <label for="zipcode" class="form-label"><?= label('zipcode', 'ZIP Code') ?> <sup
-                                    class="text-danger fw-bold">*</sup></label>
-                            <div class="position-relative zipcode-autocomplete-wrap">
-                                <input type="text" class="form-control address-required" id="zipcode" name="pincode"
-                                    inputmode="numeric" autocomplete="off" maxlength="10"
-                                    placeholder="e.g. 10001 or 10001-1234">
-                                <div id="zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                            </div>
-                            <div class="invalid-feedback d-block address-field-error" data-for="zipcode"></div>
                         </div>
 
                         <div class="col-12 mb-3 d-none" id="address-additional-section">
@@ -192,13 +192,23 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_country" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('country', 'Country') ?> <sup class="text-danger">*</sup></label>
-                                <input type="text" class="form-control shadow-none edit-address-required" name="country" id="edit_country" placeholder="Enter Country" />
+                                <input type="text" class="form-control shadow-none edit-address-required" name="country" id="edit_country" value="United States" readonly />
                                 <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_country"></div>
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_state" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('state', 'State') ?> <sup class="text-danger">*</sup></label>
                                 <input type="text" class="form-control shadow-none edit-address-required" id="edit_state" name="state" placeholder="Enter State" />
                                 <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_state"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit_zipcode" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('zipcode', 'ZIP Code') ?> <sup class="text-danger">*</sup></label>
+                                <div class="position-relative zipcode-autocomplete-wrap">
+                                    <input type="text" class="form-control shadow-none edit-address-required" id="edit_zipcode" name="pincode"
+                                        inputmode="numeric" autocomplete="off" maxlength="10"
+                                        placeholder="e.g. 10001 or 10001-1234" />
+                                    <div id="edit-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
+                                </div>
+                                <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_zipcode"></div>
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_city" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('city', 'City') ?> <sup class="text-danger">*</sup></label>
@@ -212,16 +222,6 @@
                                 </select>
                                 <input type="hidden" name="city_name" id="edit_city_name" value="" />
                                 <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_city"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_zipcode" class="form-label fw-semibold small text-uppercase fw-bold"><?= label('zipcode', 'ZIP Code') ?> <sup class="text-danger">*</sup></label>
-                                <div class="position-relative zipcode-autocomplete-wrap">
-                                    <input type="text" class="form-control shadow-none edit-address-required" id="edit_zipcode" name="pincode"
-                                        inputmode="numeric" autocomplete="off" maxlength="10"
-                                        placeholder="e.g. 10001 or 10001-1234" />
-                                    <div id="edit-zipcode-suggestions" class="list-group zipcode-suggestions-list" style="display:none;"></div>
-                                </div>
-                                <div class="invalid-feedback d-block edit-address-field-error" data-for="edit_zipcode"></div>
                             </div>
 
                             <div class="col-12" id="edit-address-additional-section">
@@ -308,12 +308,12 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         address: { label: 'Address', validate: function (v) { return v.trim() !== '' || 'Address is required.'; } },
         country: { label: 'Country', validate: function (v) { return v.trim() !== '' || 'Country is required.'; } },
         state: { label: 'State', validate: function (v) { return v.trim() !== '' || 'State is required.'; } },
-        city: { label: 'City', validate: function (v) { return v.trim() !== '' || 'City is required.'; } },
         zipcode: { label: 'ZIP Code', validate: function (v) {
             if (v.trim() === '') return 'ZIP Code is required.';
             if (!/^\d{5}(-\d{4})?$/.test(v.trim())) return 'Enter a valid US ZIP Code (e.g. 10001 or 10001-1234).';
             return true;
-        }}
+        }},
+        city: { label: 'City', validate: function (v) { return v.trim() !== '' || 'City is required.'; } }
     };
 
     function showAddressFieldError(fieldId, message) {
@@ -359,6 +359,7 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         $('#add-address-form')[0].reset();
         $('#address_name').val(defaultProfileName);
         $('#mobile_number').val(defaultProfileMobile);
+        $('#country').val('United States');
         $('#city').val('');
         $('#city_name').val('');
         $('#address-additional-section').addClass('d-none');
@@ -420,8 +421,8 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
         edit_address: addressFieldRules.address,
         edit_country: addressFieldRules.country,
         edit_state: addressFieldRules.state,
-        edit_city: addressFieldRules.city,
-        edit_zipcode: addressFieldRules.zipcode
+        edit_zipcode: addressFieldRules.zipcode,
+        edit_city: addressFieldRules.city
     };
 
     function showEditAddressFieldError(fieldId, message) {
@@ -500,7 +501,7 @@ window.ADDRESS_ZIPCODES = <?= json_encode(!empty($zipcodes) ? $zipcodes : [], JS
             $("#edit_alternate_mobile").val(row.alternate_mobile);
             $("#edit_address").val(row.address);
             $("#edit_state").val(row.state);
-            $("#edit_country").val(row.country);
+            $("#edit_country").val("United States");
             $("#edit_zipcode").val(row.pincode);
             if (editZipBinding) {
                 editZipBinding.setCityByIdOrName(row.city_id, row.city);
