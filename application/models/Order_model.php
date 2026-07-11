@@ -342,7 +342,7 @@ class Order_model extends CI_Model
             $shipping_setting = get_settings(('shipping_method'), true);
             $pickup = (isset($system_settings['local_pickup'])) ? $system_settings['local_pickup'] : 0;
 
-            if ($shipping_setting['shiprocket_shipping_method'] == 0 && $shipping_setting['local_shipping_method'] == 0) {
+            if ($shipping_setting['shiprocket_shipping_method'] == 0 && $shipping_setting['local_shipping_method'] == 0 && (!isset($shipping_setting['usps_shipping_method']) || $shipping_setting['usps_shipping_method'] == 0)) {
                 $response['error'] = true;
                 $response['message'] = 'All Shipping Method is Close Right Now Please Wait For Sometime or Contact To Admin';
                 return $response;

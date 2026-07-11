@@ -45,7 +45,8 @@ class Shipping_settings extends CI_Controller
 
             $shiprocket_shipping_method = $this->input->post('shiprocket_shipping_method', true);
             $local_shipping_method = $this->input->post('local_shipping_method', true);
-            if (!isset($shiprocket_shipping_method) && !isset($local_shipping_method)) {
+            $usps_shipping_method = $this->input->post('usps_shipping_method', true);
+            if (!isset($shiprocket_shipping_method) && !isset($local_shipping_method) && !isset($usps_shipping_method)) {
                 $this->response['error'] = true;
                 $this->response['csrfName'] = $this->security->get_csrf_token_name();
                 $this->response['csrfHash'] = $this->security->get_csrf_hash();
@@ -59,6 +60,13 @@ class Shipping_settings extends CI_Controller
                 $this->form_validation->set_rules('email', ' Email ', 'trim|required|xss_clean');
                 $this->form_validation->set_rules('password', ' Password ', 'trim|required|xss_clean');
                 $this->form_validation->set_rules('webhook_token', ' Token ', 'trim|xss_clean');
+            }
+
+            if (isset($usps_shipping_method) && $usps_shipping_method == "on") {
+                $this->form_validation->set_rules('usps_consumer_key', 'USPS Consumer Key', 'trim|required|xss_clean');
+                $this->form_validation->set_rules('usps_consumer_secret', 'USPS Consumer Secret', 'trim|required|xss_clean');
+                $this->form_validation->set_rules('usps_origin_zip', 'USPS Origin ZIP', 'trim|required|xss_clean');
+                $this->form_validation->set_rules('usps_environment', 'USPS Environment', 'trim|xss_clean');
             }
 
             if (!$this->form_validation->run()) {
@@ -75,6 +83,11 @@ class Shipping_settings extends CI_Controller
                     'email' => $this->input->post('email', true),
                     'password' => $this->input->post('password', true),
                     'webhook_token' => $this->input->post('webhook_token', true),
+                    'usps_shipping_method' => $this->input->post('usps_shipping_method', true),
+                    'usps_consumer_key' => $this->input->post('usps_consumer_key', true),
+                    'usps_consumer_secret' => $this->input->post('usps_consumer_secret', true),
+                    'usps_origin_zip' => $this->input->post('usps_origin_zip', true),
+                    'usps_environment' => $this->input->post('usps_environment', true),
                     'temp' => $this->input->post('temp', true),
                 );
 

@@ -591,7 +591,7 @@
                                         
                                             <?php
                                             $shiprocket_settings = get_settings('shipping_method', true);
-                                            if (isset($shiprocket_settings['shiprocket_shipping_method']) && $shiprocket_settings['shiprocket_shipping_method'] == 1) {
+                                            if (is_standard_shipping_enabled($shiprocket_settings)) {
                                             ?>
                                                 <tr>
                                                     <td>

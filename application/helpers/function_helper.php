@@ -2522,8 +2522,15 @@ function get_cart_total($user_id, $product_variant_id = false, $is_saved_for_lat
         $tmpRow['delivery_by'] = ($tmpRow['is_deliverable']) ? "local" : "standard_shipping";
 
 
-        // Shiprocket shipping method
-        if (isset($shipping_settings['shiprocket_shipping_method']) && $shipping_settings['shiprocket_shipping_method'] == 1) {
+        // Standard shipping method (USPS preferred over Shiprocket)
+        if (is_usps_shipping_enabled($shipping_settings)) {
+            if (!$tmpRow['is_deliverable']) {
+                if (isset($tmpRow['delivery_by']) && $tmpRow['delivery_by'] == 'standard_shipping') {
+                    $parcels_details = check_usps_parcels_deliveriblity($data, $address[0]['pincode']);
+                    $delivery_charge = isset($parcels_details['delivery_charge_without_cod']) ? $parcels_details['delivery_charge_without_cod'] : 0;
+                }
+            }
+        } elseif (isset($shipping_settings['shiprocket_shipping_method']) && $shipping_settings['shiprocket_shipping_method'] == 1) {
             if (!$tmpRow['is_deliverable'] && $data[0]['pickup_location'] != "") {
                 if (isset($tmpRow['delivery_by']) && $tmpRow['delivery_by'] == 'standard_shipping') {
                     $parcels = make_shipping_parcels($data);
@@ -5397,8 +5404,20 @@ function check_cart_products_delivarable($user_id, $area_id = 0, $zipcode = "", 
                 }
             }
             $tmpRow['delivery_by'] = ($tmpRow['is_deliverable']) ? "local" : "";
-            /* check in standard shipping then */
-            if (isset($settings['shiprocket_shipping_method']) && $settings['shiprocket_shipping_method'] == 1) {
+            /* check in standard shipping then — prefer USPS when enabled */
+            if (is_usps_shipping_enabled($settings)) {
+                if (!$tmpRow['is_deliverable']) {
+                    if (!empty($zipcode) && strlen(preg_replace('/\D/', '', $zipcode)) >= 5) {
+                        $tmpRow['is_deliverable'] = true;
+                        $tmpRow['delivery_by'] = "standard_shipping";
+                        $_SESSION['valid_zipcode'] = $zipcode;
+                        $tmpRow['message'] = 'Product is deliverable via USPS';
+                    } else {
+                        $tmpRow['is_deliverable'] = false;
+                        $tmpRow['message'] = 'Please select zipcode to check the deliveribility of item.';
+                    }
+                }
+            } elseif (isset($settings['shiprocket_shipping_method']) && $settings['shiprocket_shipping_method'] == 1) {
                 if (!$tmpRow['is_deliverable'] && $cart[$i]['pickup_location'] != "") {
 
                     $t->load->library(['Shiprocket']);
@@ -5705,6 +5724,146 @@ function make_shipping_parcels($data)
         }
     }
     return $parcels;
+}
+
+/**
+ * Whether any carrier-based standard shipping is enabled (USPS or Shiprocket).
+ */
+function is_standard_shipping_enabled($settings = null)
+{
+    if ($settings === null) {
+        $settings = get_settings('shipping_method', true);
+    }
+    if (!is_array($settings)) {
+        return false;
+    }
+    return (isset($settings['usps_shipping_method']) && $settings['usps_shipping_method'] == 1)
+        || (isset($settings['shiprocket_shipping_method']) && $settings['shiprocket_shipping_method'] == 1);
+}
+
+function is_usps_shipping_enabled($settings = null)
+{
+    if ($settings === null) {
+        $settings = get_settings('shipping_method', true);
+    }
+    return is_array($settings) && isset($settings['usps_shipping_method']) && $settings['usps_shipping_method'] == 1;
+}
+
+/**
+ * Build a single USPS parcel from cart items (weight in kg, dims in cm).
+ */
+function make_usps_parcel($cart_items)
+{
+    $weight = 0;
+    $max_length = 0;
+    $max_breadth = 0;
+    $max_height = 0;
+    $origin_zip = '';
+
+    $settings = get_settings('shipping_method', true);
+    if (is_array($settings) && !empty($settings['usps_origin_zip'])) {
+        $origin_zip = preg_replace('/\D/', '', $settings['usps_origin_zip']);
+        if (strlen($origin_zip) > 5) {
+            $origin_zip = substr($origin_zip, 0, 5);
+        }
+    }
+
+    foreach ($cart_items as $product) {
+        if (!is_array($product) || empty($product['qty'])) {
+            continue;
+        }
+        $qty = intval($product['qty']);
+        $weight += (isset($product['weight']) ? floatval($product['weight']) : 0) * $qty;
+        $length = isset($product['length']) ? floatval($product['length']) : 0;
+        $breadth = isset($product['breadth']) ? floatval($product['breadth']) : 0;
+        $height = isset($product['height']) ? floatval($product['height']) : 0;
+        if ($length > $max_length) {
+            $max_length = $length;
+        }
+        if ($breadth > $max_breadth) {
+            $max_breadth = $breadth;
+        }
+        if ($height > $max_height) {
+            $max_height = $height;
+        }
+
+        if (empty($origin_zip) && !empty($product['pickup_location'])) {
+            $pickup = fetch_details('pickup_locations', ['pickup_location' => $product['pickup_location']], 'pin_code');
+            if (!empty($pickup[0]['pin_code'])) {
+                $origin_zip = preg_replace('/\D/', '', $pickup[0]['pin_code']);
+                if (strlen($origin_zip) > 5) {
+                    $origin_zip = substr($origin_zip, 0, 5);
+                }
+            }
+        }
+    }
+
+    return [
+        'weight_kg' => $weight,
+        'length_cm' => $max_length,
+        'breadth_cm' => $max_breadth,
+        'height_cm' => $max_height,
+        'origin_zip' => $origin_zip,
+    ];
+}
+
+/**
+ * Get USPS dynamic rates for cart parcels to a destination ZIP.
+ */
+function check_usps_parcels_deliveriblity($cart_items, $user_pincode)
+{
+    $t = &get_instance();
+    $t->load->library(['usps']);
+
+    $parcel = make_usps_parcel($cart_items);
+    $destination = preg_replace('/\D/', '', $user_pincode);
+    if (strlen($destination) > 5) {
+        $destination = substr($destination, 0, 5);
+    }
+
+    $rate_result = $t->usps->get_domestic_rate([
+        'origin_zip' => $parcel['origin_zip'],
+        'destination_zip' => $destination,
+        'weight_kg' => $parcel['weight_kg'],
+        'length_cm' => $parcel['length_cm'],
+        'breadth_cm' => $parcel['breadth_cm'],
+        'height_cm' => $parcel['height_cm'],
+    ]);
+
+    if (!empty($rate_result['error'])) {
+        return [
+            'error' => true,
+            'message' => isset($rate_result['message']) ? $rate_result['message'] : 'USPS rate lookup failed',
+            'estimated_delivery_days' => '',
+            'estimate_date' => '',
+            'delivery_charge' => 0,
+            'delivery_charge_with_cod' => 0,
+            'delivery_charge_without_cod' => 0,
+            'mail_class' => '',
+            'data' => $rate_result,
+        ];
+    }
+
+    $rate = round(floatval($rate_result['rate']), 2);
+    $mail_class = isset($rate_result['mail_class']) ? $rate_result['mail_class'] : '';
+    $description = isset($rate_result['description']) ? $rate_result['description'] : $mail_class;
+
+    return [
+        'error' => false,
+        'message' => 'USPS rate retrieved',
+        'estimated_delivery_days' => '',
+        'estimate_date' => $description,
+        'delivery_charge' => $rate,
+        'delivery_charge_with_cod' => $rate,
+        'delivery_charge_without_cod' => $rate,
+        'mail_class' => $mail_class,
+        'data' => [
+            'parcel_weight_kg' => $parcel['weight_kg'],
+            'origin_zip' => $parcel['origin_zip'],
+            'destination_zip' => $destination,
+            'rate' => $rate_result,
+        ],
+    ];
 }
 
 function check_parcels_deliveriblity($parcels, $user_pincode)

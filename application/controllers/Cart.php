@@ -722,10 +722,10 @@ class Cart extends CI_Controller
                 $city_id = $city_id[0]['id'];
 
                 $system_settings = get_settings('system_settings', true);
-                if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($shipping_settings['local_shipping_method']) && isset($shipping_settings['shiprocket_shipping_method']) && $shipping_settings['local_shipping_method'] == 1 && $shipping_settings['shiprocket_shipping_method'] == 1)) {
+                if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($shipping_settings['local_shipping_method']) && $shipping_settings['local_shipping_method'] == 1 && is_standard_shipping_enabled($shipping_settings))) {
                     $product_delivarable = check_cart_products_delivarable($_POST['user_id'], $area_id[0]['area_id'], $zipcode, $zipcode_id['id']);
                 }
-                if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && $shipping_settings['shiprocket_shipping_method'] != 1) {
+                if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && !is_standard_shipping_enabled($shipping_settings)) {
                     $product_delivarable = check_cart_products_delivarable($_POST['user_id'], $area_id[0]['area_id'], '', '', $city, $city_id);
                 }
                 if (!empty($product_delivarable)) {
@@ -1346,11 +1346,11 @@ class Cart extends CI_Controller
             $city_id = $city_id[0]['id'];
 
             $product_availability = [];
-            if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($settings['local_shipping_method']) && isset($settings['shiprocket_shipping_method']) && $settings['local_shipping_method'] == 1 && $settings['shiprocket_shipping_method'] == 1)) {
+            if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($settings['local_shipping_method']) && $settings['local_shipping_method'] == 1 && is_standard_shipping_enabled($settings))) {
                 $result = check_cart_products_delivarable($this->data['user']->id, $area_id[0]['area_id'], $zipcode, $zipcode_id['id']);
                 $product_availability = is_array($result) ? $result : [];
             }
-            if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && $settings['shiprocket_shipping_method'] != 1) {
+            if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && !is_standard_shipping_enabled($settings)) {
                 $result = check_cart_products_delivarable($this->data['user']->id, $area_id[0]['area_id'], '', '', $city, $city_id);
                 $product_availability = is_array($result) ? $result : [];
             }
@@ -1365,8 +1365,14 @@ class Cart extends CI_Controller
                     $cart[$i]['delivery_by'] = $product_availability[$i]['delivery_by'];
                     $cart[$i]['is_deliverable'] = $product_availability[$i]['is_deliverable'];
                 } else {
-                    $cart[$i]['delivery_by'] = 'local_shipping';
-                    $cart[$i]['is_deliverable'] = true;
+                    // When only USPS (or standard shipping) is enabled without local checks, ship via standard
+                    if (is_standard_shipping_enabled($settings) && (!isset($settings['local_shipping_method']) || $settings['local_shipping_method'] != 1)) {
+                        $cart[$i]['delivery_by'] = 'standard_shipping';
+                        $cart[$i]['is_deliverable'] = true;
+                    } else {
+                        $cart[$i]['delivery_by'] = 'local_shipping';
+                        $cart[$i]['is_deliverable'] = true;
+                    }
                 }
 
                 if (isset($cart[$i]['delivery_by']) && $cart[$i]['delivery_by'] == "standard_shipping") {
@@ -1387,13 +1393,25 @@ class Cart extends CI_Controller
 
             if (!empty($standard_shipping_cart)) {
                 $delivery_pincode = fetch_details('addresses', ['id' => $_POST['address_id']], 'pincode');
-                $parcels = make_shipping_parcels($cart);
-                $parcels_details = check_parcels_deliveriblity($parcels, $delivery_pincode[0]['pincode']);
+
+                if (is_usps_shipping_enabled($settings)) {
+                    $parcels_details = check_usps_parcels_deliveriblity($cart, $delivery_pincode[0]['pincode']);
+                    $this->response['shipping_method'] = $settings['usps_shipping_method'];
+                    $this->response['shipping_provider'] = 'usps';
+                    if (!empty($parcels_details['error'])) {
+                        $this->response['error'] = true;
+                        $this->response['message'] = isset($parcels_details['message']) ? $parcels_details['message'] : 'Unable to calculate USPS shipping rate.';
+                    }
+                } else {
+                    $parcels = make_shipping_parcels($cart);
+                    $parcels_details = check_parcels_deliveriblity($parcels, $delivery_pincode[0]['pincode']);
+                    $this->response['shipping_method'] = $settings['shiprocket_shipping_method'];
+                    $this->response['shipping_provider'] = 'shiprocket';
+                }
 
                 $this->response['delivery_charge_with_cod'] = $parcels_details['delivery_charge_with_cod'];
                 $this->response['delivery_charge_without_cod'] = $parcels_details['delivery_charge_without_cod'];
                 $this->response['estimate_date'] = $parcels_details['estimate_date'];
-                $this->response['shipping_method'] = $settings['shiprocket_shipping_method'];
             } elseif (!empty($local_shipping_cart)) {
                 $total_amount = $this->input->post('total', true);
                 $delivery_charge = get_delivery_charge($address_id, $total_amount);
@@ -1590,10 +1608,10 @@ class Cart extends CI_Controller
             $city_id = fetch_details('cities', ['name' => $city], 'id');
             $city_id = $city_id[0]['id'];
 
-            if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($settings['local_shipping_method']) && isset($settings['shiprocket_shipping_method']) && $settings['local_shipping_method'] == 1 && $settings['shiprocket_shipping_method'] == 1)) {
+            if ((isset($system_settings['pincode_wise_deliverability']) && $system_settings['pincode_wise_deliverability'] == 1) || (isset($settings['local_shipping_method']) && $settings['local_shipping_method'] == 1 && is_standard_shipping_enabled($settings))) {
                 $product_delivarable = check_cart_products_delivarable($this->data['user']->id, $area_id[0]['area_id'], $zipcode, $zipcode_id['id']);
             }
-            if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && $settings['shiprocket_shipping_method'] != 1) {
+            if (isset($system_settings['city_wise_deliverability']) && $system_settings['city_wise_deliverability'] == 1 && !is_standard_shipping_enabled($settings)) {
                 $product_delivarable = check_cart_products_delivarable($this->data['user']->id, $area_id[0]['area_id'], '', '', $city, $city_id);
             }
 

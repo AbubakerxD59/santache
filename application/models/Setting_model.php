@@ -928,6 +928,13 @@ class Setting_model extends CI_Model
         $shipping_data['password'] = isset($post['password']) && !empty($post['password']) ? $post['password'] : '';
         $shipping_data['webhook_token'] = isset($post['webhook_token']) && !empty($post['webhook_token']) ? $post['webhook_token'] : '';
         $shipping_data['local_shipping_method'] = (isset($post['local_shipping_method']) && !empty($post['local_shipping_method'])) ? '1' : '0';
+        $shipping_data['usps_shipping_method'] = (isset($post['usps_shipping_method']) && !empty($post['usps_shipping_method'])) ? '1' : '0';
+        $shipping_data['usps_consumer_key'] = isset($post['usps_consumer_key']) && !empty($post['usps_consumer_key']) ? $post['usps_consumer_key'] : '';
+        $shipping_data['usps_consumer_secret'] = isset($post['usps_consumer_secret']) && !empty($post['usps_consumer_secret']) ? $post['usps_consumer_secret'] : '';
+        $shipping_data['usps_origin_zip'] = isset($post['usps_origin_zip']) && !empty($post['usps_origin_zip']) ? $post['usps_origin_zip'] : '';
+        $shipping_data['usps_environment'] = isset($post['usps_environment']) && !empty($post['usps_environment']) ? $post['usps_environment'] : 'production';
+        $shipping_data['usps_price_type'] = 'RETAIL';
+        $shipping_data['usps_mail_class'] = 'USPS_GROUND_ADVANTAGE';
 
         $shipping_data = json_encode($shipping_data);
 
