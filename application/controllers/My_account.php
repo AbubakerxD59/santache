@@ -641,6 +641,18 @@ class My_account extends CI_Controller
                 $arr['type'] = 'home';
             }
             $arr['country'] = 'United States';
+
+            $zip_check = validate_us_zipcode_via_usps($arr['pincode'] ?? '');
+            if (!empty($zip_check['error'])) {
+                $this->response['error'] = true;
+                $this->response['message'] = $zip_check['message'];
+                $this->response['csrfName'] = $this->security->get_csrf_token_name();
+                $this->response['csrfHash'] = $this->security->get_csrf_hash();
+                $this->response['data'] = array();
+                print_r(json_encode($this->response));
+                return false;
+            }
+
             $city = $this->ensure_city($arr['city_name'] ?? '', $arr['city_id'] ?? 0);
             if (empty($city['id'])) {
                 $this->response['error'] = true;
@@ -701,6 +713,18 @@ class My_account extends CI_Controller
                 return false;
             }
             $_POST['country'] = 'United States';
+
+            $zip_check = validate_us_zipcode_via_usps($_POST['pincode'] ?? '');
+            if (!empty($zip_check['error'])) {
+                $this->response['error'] = true;
+                $this->response['message'] = $zip_check['message'];
+                $this->response['csrfName'] = $this->security->get_csrf_token_name();
+                $this->response['csrfHash'] = $this->security->get_csrf_hash();
+                $this->response['data'] = array();
+                print_r(json_encode($this->response));
+                return false;
+            }
+
             $city = $this->ensure_city($_POST['city_name'] ?? '', $_POST['city_id'] ?? 0);
             if (empty($city['id'])) {
                 $this->response['error'] = true;

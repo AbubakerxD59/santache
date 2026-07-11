@@ -372,6 +372,20 @@ class Area extends CI_Controller
                 $this->response['message'] = validation_errors();
                 print_r(json_encode($this->response));
             } else {
+                $zipcode = trim((string) $this->input->post('zipcode', true));
+                if ($zipcode !== '') {
+                    $zip_check = validate_us_zipcode_via_usps($zipcode);
+                    if (!empty($zip_check['error'])) {
+                        $this->response['error'] = true;
+                        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+                        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+                        $this->response['message'] = $zip_check['message'];
+                        $this->response['data'] = array();
+                        print_r(json_encode($this->response));
+                        return false;
+                    }
+                }
+
                 if (isset($settings['pincode_wise_deliverability']) && $settings['pincode_wise_deliverability'] == 1) {
                     $edit_zipcode = $this->input->post('edit_zipcode', true);
                     if (null !== $edit_zipcode) {

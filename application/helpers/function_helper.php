@@ -5750,6 +5750,45 @@ function is_usps_shipping_enabled($settings = null)
 }
 
 /**
+ * Validate that a ZIP is a real US ZIP via USPS City/State API.
+ * When USPS credentials are missing, only format is checked (caller should already enforce format).
+ *
+ * @return array error (bool), message, city, state, zipcode, skipped (bool)
+ */
+function validate_us_zipcode_via_usps($pincode)
+{
+    $pincode = trim((string) $pincode);
+    if (!preg_match('/^\d{5}(-\d{4})?$/', $pincode)) {
+        return [
+            'error' => true,
+            'message' => 'Please enter a valid US ZIP Code (e.g. 10001 or 10001-1234).',
+            'city' => '',
+            'state' => '',
+            'zipcode' => $pincode,
+            'skipped' => false,
+        ];
+    }
+
+    $t = &get_instance();
+    $t->load->library(['usps']);
+
+    if (!$t->usps->has_api_credentials()) {
+        return [
+            'error' => false,
+            'message' => 'USPS credentials not configured; ZIP format accepted.',
+            'city' => '',
+            'state' => '',
+            'zipcode' => substr(preg_replace('/\D/', '', $pincode), 0, 5),
+            'skipped' => true,
+        ];
+    }
+
+    $result = $t->usps->validate_zipcode($pincode);
+    $result['skipped'] = false;
+    return $result;
+}
+
+/**
  * Build a single USPS parcel from cart items (weight in kg, dims in cm).
  */
 function make_usps_parcel($cart_items)

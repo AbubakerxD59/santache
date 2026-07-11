@@ -4344,6 +4344,18 @@ Defined Methods:-
             $this->response['message'] = strip_tags(validation_errors());
             print_r(json_encode($this->response));
         } else {
+            $zipcode = trim((string) $this->input->post('zipcode', true));
+            if ($zipcode !== '') {
+                $zip_check = validate_us_zipcode_via_usps($zipcode);
+                if (!empty($zip_check['error'])) {
+                    $this->response['error'] = true;
+                    $this->response['message'] = $zip_check['message'];
+                    $this->response['data'] = array();
+                    print_r(json_encode($this->response));
+                    return false;
+                }
+            }
+
             if (isset($_POST['edit_zipcode'])) {
                 if (is_exist(['city_id' => $this->input->post('city', true), 'zipcode' => $this->input->post('zipcode', true)], 'zipcodes', $this->input->post('edit_zipcode', true))) {
                     $response["error"] = true;

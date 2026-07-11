@@ -3319,6 +3319,17 @@ Defined Methods:-
             $this->response['data'] = array();
         } else {
             $user_id = isset($this->user_details['id']) && $this->user_details['id'] !== null ? $this->user_details['id'] : '';
+            $pincode = !empty($_POST['pincode']) ? $_POST['pincode'] : (!empty($_POST['pincode_name']) ? $_POST['pincode_name'] : '');
+            if (!empty($pincode)) {
+                $zip_check = validate_us_zipcode_via_usps($pincode);
+                if (!empty($zip_check['error'])) {
+                    $this->response['error'] = true;
+                    $this->response['message'] = $zip_check['message'];
+                    $this->response['data'] = array();
+                    print_r(json_encode($this->response));
+                    return;
+                }
+            }
             $this->address_model->set_address($_POST);
             $res = $this->address_model->get_address($user_id, false, true);
             $this->response['error'] = false;
@@ -3355,6 +3366,7 @@ Defined Methods:-
         $this->form_validation->set_rules('city_id', 'City', 'trim|xss_clean');
         $this->form_validation->set_rules('city_name', 'City', 'trim|xss_clean');
         $this->form_validation->set_rules('area_name', 'Area', 'trim|xss_clean');
+        $this->form_validation->set_rules('pincode', 'Pincode', 'trim|xss_clean');
         $this->form_validation->set_rules(
             'pincode_name',
             'Pincode',
@@ -3372,6 +3384,17 @@ Defined Methods:-
             $this->response['message'] = strip_tags(validation_errors());
             $this->response['data'] = array();
         } else {
+            $pincode = !empty($_POST['pincode']) ? $_POST['pincode'] : (!empty($_POST['pincode_name']) ? $_POST['pincode_name'] : '');
+            if (!empty($pincode)) {
+                $zip_check = validate_us_zipcode_via_usps($pincode);
+                if (!empty($zip_check['error'])) {
+                    $this->response['error'] = true;
+                    $this->response['message'] = $zip_check['message'];
+                    $this->response['data'] = array();
+                    print_r(json_encode($this->response));
+                    return;
+                }
+            }
 
             $this->address_model->set_address($_POST);
             $res = $this->address_model->get_address(null, $this->input->post('id', true), true);

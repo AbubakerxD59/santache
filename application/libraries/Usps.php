@@ -62,7 +62,83 @@ class Usps
 
     public function is_configured()
     {
-        return !empty($this->consumer_key) && !empty($this->consumer_secret) && !empty($this->origin_zip);
+        return $this->has_api_credentials() && !empty($this->origin_zip);
+    }
+
+    /**
+     * True when Consumer Key and Secret are set (enough for OAuth + ZIP lookup).
+     */
+    public function has_api_credentials()
+    {
+        return !empty($this->consumer_key) && !empty($this->consumer_secret);
+    }
+
+    /**
+     * Verify ZIP is a real US ZIP Code via USPS City/State API.
+     *
+     * @param string $zipcode e.g. 10001 or 10001-1234
+     * @return array error, message, city, state, zipcode
+     */
+    public function validate_zipcode($zipcode)
+    {
+        $zipcode = trim((string) $zipcode);
+        if (!preg_match('/^\d{5}(-\d{4})?$/', $zipcode)) {
+            return [
+                'error' => true,
+                'message' => 'ZIP Code must be a valid US format (e.g. 10001 or 10001-1234).',
+                'city' => '',
+                'state' => '',
+                'zipcode' => $zipcode,
+            ];
+        }
+
+        if (!$this->has_api_credentials()) {
+            return [
+                'error' => true,
+                'message' => 'USPS API credentials are not configured. Cannot verify ZIP Code.',
+                'city' => '',
+                'state' => '',
+                'zipcode' => $zipcode,
+            ];
+        }
+
+        $zip5 = substr(preg_replace('/\D/', '', $zipcode), 0, 5);
+        $url = $this->base_url . '/addresses/v3/city-state?ZIPCode=' . urlencode($zip5);
+        $response = $this->curl($url, 'GET');
+
+        $http = isset($response['apiStatus']) ? intval($response['apiStatus']) : 0;
+        $city = isset($response['city']) ? trim((string) $response['city']) : '';
+        $state = isset($response['state']) ? trim((string) $response['state']) : '';
+
+        if ($http >= 200 && $http < 300 && $city !== '' && $state !== '') {
+            return [
+                'error' => false,
+                'message' => 'Valid US ZIP Code.',
+                'city' => $city,
+                'state' => $state,
+                'zipcode' => $zip5,
+            ];
+        }
+
+        $api_message = '';
+        if (isset($response['error']['message'])) {
+            $api_message = $response['error']['message'];
+        } elseif (isset($response['error']['errors'][0]['detail'])) {
+            $api_message = $response['error']['errors'][0]['detail'];
+        } elseif (isset($response['message'])) {
+            $api_message = $response['message'];
+        }
+
+        return [
+            'error' => true,
+            'message' => !empty($api_message)
+                ? $api_message
+                : 'Please enter a valid US ZIP Code.',
+            'city' => '',
+            'state' => '',
+            'zipcode' => $zip5,
+            'raw' => $response,
+        ];
     }
 
     /**
