@@ -5975,6 +5975,9 @@ $("#city").on("change", function (e) {
 $("#add-address-form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
   $.ajax({
     type: "POST",
@@ -6069,6 +6072,9 @@ $("#edit_city").on("change", function (e, data) {
 $("#edit-address-form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
   $.ajax({
     type: "POST",
@@ -6120,6 +6126,9 @@ $("#add-new-language-form").on("submit", function (e) {
   e.preventDefault();
 
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
 
   $.ajax({
@@ -6188,6 +6197,9 @@ $("#selected_language").on("change", function () {
 $("#update-language-form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
   $.ajax({
     type: "POST",
@@ -6490,6 +6502,9 @@ $(document).ready(function () {
 $("#ticket_send_msg_form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
 
   $.ajax({
@@ -6904,6 +6919,9 @@ $(document).on("click", ".edit_transaction", function (e, row) {
 $("#edit_transaction_form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
 
   $.ajax({
@@ -7239,6 +7257,9 @@ $(document).on("click", ".edit_order_tracking", function (e, rows) {
 $("#order_tracking_form").on("submit", function (e) {
   e.preventDefault();
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
 
   $.ajax({
@@ -12222,6 +12243,9 @@ $(document).on("submit", "#usps_label_form", function (e) {
   var $btn = $("#usps_label_submit_btn");
   $btn.attr("disabled", true).text("Creating...");
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
   $.ajax({
     type: "POST",
@@ -12308,6 +12332,9 @@ $(document).on("submit", "#usps_pickup_form", function (e) {
   var $btn = $("#usps_pickup_submit_btn");
   $btn.attr("disabled", true).text("Scheduling...");
   var formdata = new FormData(this);
+  if (typeof formdata.delete === "function") {
+    formdata.delete(csrfName);
+  }
   formdata.append(csrfName, csrfHash);
   $.ajax({
     type: "POST",
