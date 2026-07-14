@@ -309,11 +309,14 @@ class Usps
         curl_close($curl);
 
         $response = (!empty($result)) ? json_decode($result, true) : [];
+        if (!is_array($response)) {
+            $response = [];
+        }
         $token = (isset($response['access_token'])) ? $response['access_token'] : '';
 
         if (!empty($token) && $http_code >= 200 && $http_code < 300) {
             $expires_in = isset($response['expires_in']) ? intval($response['expires_in']) : 28800;
-            $this->write_cached_token($token, $expires_in);
+            $this->write_cached_token($token, $expires_in, $response);
         }
 
         return $token;
@@ -330,6 +333,17 @@ class Usps
         if (!empty($this->payment_token_cache_file) && is_file($this->payment_token_cache_file)) {
             @unlink($this->payment_token_cache_file);
         }
+        $this->delete_setting('usps_oauth_token');
+        $this->delete_setting('usps_payment_token');
+    }
+
+    /**
+     * Latest saved OAuth token record from DB (token + full USPS response), or empty array.
+     */
+    public function get_saved_oauth_token()
+    {
+        $data = $this->read_setting('usps_oauth_token');
+        return is_array($data) ? $data : [];
     }
 
     private function enrich_scope_error($message)
@@ -1206,16 +1220,17 @@ class Usps
 
     private function read_cached_payment_token()
     {
-        if (!is_file($this->payment_token_cache_file)) {
-            return '';
-        }
-        $raw = @file_get_contents($this->payment_token_cache_file);
-        if (empty($raw)) {
-            return '';
-        }
-        $data = json_decode($raw, true);
+        $data = $this->read_setting('usps_payment_token');
         if (empty($data['payment_token']) || empty($data['expires_at'])) {
-            return '';
+            // Fallback: legacy file cache
+            if (!is_file($this->payment_token_cache_file)) {
+                return '';
+            }
+            $raw = @file_get_contents($this->payment_token_cache_file);
+            $data = (!empty($raw)) ? json_decode($raw, true) : [];
+            if (empty($data['payment_token']) || empty($data['expires_at'])) {
+                return '';
+            }
         }
         if (time() >= (intval($data['expires_at']) - 300)) {
             return '';
@@ -1225,38 +1240,103 @@ class Usps
 
     private function write_cached_payment_token($token, $expires_in)
     {
-        $payload = json_encode([
+        $payload = [
             'payment_token' => $token,
             'expires_at' => time() + max(60, intval($expires_in)),
-        ]);
-        @file_put_contents($this->payment_token_cache_file, $payload);
+            'saved_at' => date('Y-m-d H:i:s'),
+            'environment' => (strpos($this->base_url, 'apis-tem') !== false) ? 'tem' : 'production',
+        ];
+        $this->write_setting('usps_payment_token', $payload);
+        @file_put_contents($this->payment_token_cache_file, json_encode($payload));
     }
 
     private function read_cached_token()
     {
-        if (!is_file($this->token_cache_file)) {
-            return '';
-        }
-        $raw = @file_get_contents($this->token_cache_file);
-        if (empty($raw)) {
-            return '';
-        }
-        $data = json_decode($raw, true);
+        $data = $this->read_setting('usps_oauth_token');
         if (empty($data['access_token']) || empty($data['expires_at'])) {
+            // Fallback: legacy file cache
+            if (!is_file($this->token_cache_file)) {
+                return '';
+            }
+            $raw = @file_get_contents($this->token_cache_file);
+            $data = (!empty($raw)) ? json_decode($raw, true) : [];
+            if (empty($data['access_token']) || empty($data['expires_at'])) {
+                return '';
+            }
+        }
+
+        $current_env = (strpos($this->base_url, 'apis-tem') !== false) ? 'tem' : 'production';
+        if (!empty($data['environment']) && $data['environment'] !== $current_env) {
             return '';
         }
+
         if (time() >= (intval($data['expires_at']) - 300)) {
             return '';
         }
+
         return $data['access_token'];
     }
 
-    private function write_cached_token($token, $expires_in)
+    /**
+     * Persist OAuth access token + full USPS token API response in settings DB.
+     *
+     * @param string $token
+     * @param int $expires_in
+     * @param array $response Full JSON body from /oauth2/v3/token
+     */
+    private function write_cached_token($token, $expires_in, $response = [])
     {
-        $payload = json_encode([
+        $payload = [
             'access_token' => $token,
             'expires_at' => time() + max(60, intval($expires_in)),
-        ]);
-        @file_put_contents($this->token_cache_file, $payload);
+            'expires_in' => intval($expires_in),
+            'saved_at' => date('Y-m-d H:i:s'),
+            'environment' => (strpos($this->base_url, 'apis-tem') !== false) ? 'tem' : 'production',
+            'response' => is_array($response) ? $response : [],
+        ];
+
+        $this->write_setting('usps_oauth_token', $payload);
+        @file_put_contents($this->token_cache_file, json_encode($payload));
+    }
+
+    private function read_setting($variable)
+    {
+        $CI = &get_instance();
+        if (!isset($CI->db)) {
+            return [];
+        }
+        $row = $CI->db->select('value')->where('variable', $variable)->get('settings')->row_array();
+        if (empty($row['value'])) {
+            return [];
+        }
+        $decoded = json_decode($row['value'], true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function write_setting($variable, $data)
+    {
+        $CI = &get_instance();
+        if (!isset($CI->db)) {
+            return;
+        }
+        $value = json_encode($data);
+        $exists = $CI->db->where('variable', $variable)->count_all_results('settings');
+        if ($exists > 0) {
+            $CI->db->where('variable', $variable)->update('settings', ['value' => $value]);
+        } else {
+            $CI->db->insert('settings', [
+                'variable' => $variable,
+                'value' => $value,
+            ]);
+        }
+    }
+
+    private function delete_setting($variable)
+    {
+        $CI = &get_instance();
+        if (!isset($CI->db)) {
+            return;
+        }
+        $CI->db->where('variable', $variable)->delete('settings');
     }
 }
