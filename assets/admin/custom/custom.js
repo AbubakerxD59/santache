@@ -8234,3 +8234,61 @@ $(document).on('click', '.cancel_usps_pickup', function (e) {
         },
     })
 })
+
+/* USPS OAuth token generate (shipping settings) */
+$(document).on('click', '#generate_usps_oauth_token_btn', function (e) {
+    e.preventDefault()
+    var $btn = $(this)
+    $btn.attr('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Generating...')
+    $.ajax({
+        type: 'POST',
+        url: base_url + 'admin/shipping_settings/generate_usps_oauth_token',
+        data: {
+            [csrfName]: csrfHash,
+        },
+        dataType: 'json',
+        success: function (result) {
+            csrfName = result.csrfName
+            csrfHash = result.csrfHash
+            $btn.attr('disabled', false).html('<i class="fas fa-key"></i> Generate New OAuth Token')
+            if (result.error == false) {
+                var data = result.data || {}
+                var response = data.response || {}
+                $('#usps_oauth_token_display').val(data.access_token || '')
+                $('#usps_oauth_scope_display').val(response.scope || '')
+                var products = response.api_products || ''
+                if (typeof products !== 'string') {
+                    products = JSON.stringify(products)
+                }
+                $('#usps_oauth_products_display').val(products)
+                $('#usps_oauth_env_display').val(data.environment || '')
+                $('#usps_oauth_saved_display').val(data.saved_at || '')
+                var expiresAt = ''
+                if (data.expires_at) {
+                    var d = new Date(parseInt(data.expires_at, 10) * 1000)
+                    if (!isNaN(d.getTime())) {
+                        expiresAt = d.toISOString().slice(0, 19).replace('T', ' ')
+                    }
+                }
+                $('#usps_oauth_expires_display').val(expiresAt)
+                $('#usps_oauth_expired_hint').text('').removeClass('text-danger')
+                iziToast.success({
+                    title: 'Success',
+                    message: result.message,
+                })
+            } else {
+                iziToast.error({
+                    title: 'Error',
+                    message: result.message,
+                })
+            }
+        },
+        error: function () {
+            $btn.attr('disabled', false).html('<i class="fas fa-key"></i> Generate New OAuth Token')
+            iziToast.error({
+                title: 'Error',
+                message: 'Failed to generate USPS OAuth token.',
+            })
+        },
+    })
+})

@@ -26,6 +26,8 @@ class Shipping_settings extends CI_Controller
             $this->data['title'] = 'Shipping Methods Management | ' . $settings['app_name'];
             $this->data['meta_description'] = 'Shipping Methods Management  | ' . $settings['app_name'];
             $this->data['settings'] = get_settings('shipping_method', true);
+            $this->load->library(['usps']);
+            $this->data['usps_oauth'] = $this->usps->get_saved_oauth_token();
             $this->load->view('admin/template', $this->data);
         } else {
             redirect('admin/login', 'refresh');
@@ -98,6 +100,7 @@ class Shipping_settings extends CI_Controller
                     'usps_from_city' => $this->input->post('usps_from_city', true),
                     'usps_from_state' => $this->input->post('usps_from_state', true),
                     'usps_from_phone' => $this->input->post('usps_from_phone', true),
+                    'usps_from_email' => $this->input->post('usps_from_email', true),
                     'temp' => $this->input->post('temp', true),
                 );
 
@@ -111,5 +114,35 @@ class Shipping_settings extends CI_Controller
         } else {
             redirect('admin/login', 'refresh');
         }
+    }
+
+    /**
+     * Force-generate a new USPS OAuth token and save it to settings.
+     */
+    public function generate_usps_oauth_token()
+    {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect('admin/login', 'refresh');
+            return;
+        }
+
+        if (!has_permissions('update', 'shipping_settings')) {
+            $this->response['error'] = true;
+            $this->response['message'] = PERMISSION_ERROR_MSG;
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->load->library(['usps']);
+        $result = $this->usps->refresh_oauth_token();
+
+        $this->response['error'] = !empty($result['error']);
+        $this->response['message'] = $result['message'] ?? 'Unable to generate token';
+        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+        $this->response['data'] = $result['data'] ?? [];
+        print_r(json_encode($this->response));
     }
 }

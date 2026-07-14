@@ -268,15 +268,19 @@ class Usps
         return ($inch > 0) ? round($inch, 2) : 0;
     }
 
-    public function generate_token()
+    public function generate_token($force = false)
     {
         if (empty($this->consumer_key) || empty($this->consumer_secret)) {
             return '';
         }
 
-        $cached = $this->read_cached_token();
-        if (!empty($cached)) {
-            return $cached;
+        if (!$force) {
+            $cached = $this->read_cached_token();
+            if (!empty($cached)) {
+                return $cached;
+            }
+        } else {
+            $this->clear_token_cache();
         }
 
         $url = $this->base_url . '/oauth2/v3/token';
@@ -320,6 +324,45 @@ class Usps
         }
 
         return $token;
+    }
+
+    /**
+     * Force a new OAuth token from USPS and persist it to settings.
+     *
+     * @return array error, message, data (saved token record)
+     */
+    public function refresh_oauth_token()
+    {
+        if (!$this->has_api_credentials()) {
+            return [
+                'error' => true,
+                'message' => 'USPS Consumer Key and Secret are required. Save them in shipping settings first.',
+                'data' => [],
+            ];
+        }
+
+        $token = $this->generate_token(true);
+        $saved = $this->get_saved_oauth_token();
+
+        if (empty($token) || empty($saved['access_token'])) {
+            return [
+                'error' => true,
+                'message' => 'Failed to generate USPS OAuth token. Check Consumer Key/Secret and API environment.',
+                'data' => $saved,
+            ];
+        }
+
+        $scope = '';
+        if (!empty($saved['response']['scope'])) {
+            $scope = $saved['response']['scope'];
+        }
+
+        return [
+            'error' => false,
+            'message' => 'USPS OAuth token generated and saved successfully.'
+                . ($scope !== '' ? ' Scope: ' . $scope : ''),
+            'data' => $saved,
+        ];
     }
 
     /**

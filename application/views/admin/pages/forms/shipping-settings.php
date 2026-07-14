@@ -108,6 +108,61 @@
                                     </div>
                                 </div>
 
+                                <?php
+                                $oauth = isset($usps_oauth) && is_array($usps_oauth) ? $usps_oauth : [];
+                                $oauth_token = !empty($oauth['access_token']) ? $oauth['access_token'] : '';
+                                $oauth_scope = !empty($oauth['response']['scope']) ? $oauth['response']['scope'] : '';
+                                $oauth_saved_at = !empty($oauth['saved_at']) ? $oauth['saved_at'] : '';
+                                $oauth_env = !empty($oauth['environment']) ? $oauth['environment'] : '';
+                                $oauth_expires_at = '';
+                                $oauth_expired = false;
+                                if (!empty($oauth['expires_at'])) {
+                                    $oauth_expires_at = date('Y-m-d H:i:s', intval($oauth['expires_at']));
+                                    $oauth_expired = (time() >= (intval($oauth['expires_at']) - 300));
+                                }
+                                $oauth_products = !empty($oauth['response']['api_products']) ? $oauth['response']['api_products'] : '';
+                                ?>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h5>USPS OAuth Token</h5>
+                                        <small class="text-muted">Stored in <code>settings</code> as <code>usps_oauth_token</code>. Save Consumer Key/Secret first, then generate.</small>
+                                    </div>
+                                    <div class="form-group col-12">
+                                        <label class="mb-2" for="usps_oauth_token_display">Current Access Token</label>
+                                        <textarea class="form-control mb-2" id="usps_oauth_token_display" rows="3" readonly placeholder="No token generated yet"><?= htmlspecialchars($oauth_token, ENT_QUOTES, 'UTF-8') ?></textarea>
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2">Scope</label>
+                                        <input type="text" class="form-control mb-2" id="usps_oauth_scope_display" value="<?= htmlspecialchars($oauth_scope, ENT_QUOTES, 'UTF-8') ?>" readonly />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2">API Products</label>
+                                        <input type="text" class="form-control mb-2" id="usps_oauth_products_display" value="<?= htmlspecialchars(is_string($oauth_products) ? $oauth_products : json_encode($oauth_products), ENT_QUOTES, 'UTF-8') ?>" readonly />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2">Environment</label>
+                                        <input type="text" class="form-control mb-2" id="usps_oauth_env_display" value="<?= htmlspecialchars($oauth_env, ENT_QUOTES, 'UTF-8') ?>" readonly />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2">Saved At</label>
+                                        <input type="text" class="form-control mb-2" id="usps_oauth_saved_display" value="<?= htmlspecialchars($oauth_saved_at, ENT_QUOTES, 'UTF-8') ?>" readonly />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2">Expires At</label>
+                                        <input type="text" class="form-control mb-2" id="usps_oauth_expires_display" value="<?= htmlspecialchars($oauth_expires_at, ENT_QUOTES, 'UTF-8') ?>" readonly />
+                                        <?php if ($oauth_token !== '' && $oauth_expired) { ?>
+                                            <small class="text-danger" id="usps_oauth_expired_hint">Token expired or near expiry — generate a new one.</small>
+                                        <?php } else { ?>
+                                            <small class="text-muted" id="usps_oauth_expired_hint"></small>
+                                        <?php } ?>
+                                    </div>
+                                    <div class="form-group col-12">
+                                        <button type="button" class="btn btn-info" id="generate_usps_oauth_token_btn">
+                                            <i class="fas fa-key"></i> Generate New OAuth Token
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div class="row mt-3">
                                     <div class="col-12">
                                         <h5>USPS Labels &amp; Tracking</h5>
