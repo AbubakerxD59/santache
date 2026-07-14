@@ -1172,6 +1172,7 @@
                 $sp_height = (!empty($sp['height']) && floatval($sp['height']) > 0) ? floatval($sp['height']) : '';
                 ?>
                 <form id="usps_label_form" method="POST" action="<?= base_url('admin/orders/create_usps_label'); ?>">
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>" />
                     <input type="hidden" name="order_id" value="<?= (int) $order_detls[0]['id'] ?>" />
                     <p class="text-muted small mb-3">Pre-filled from order item variants (sum weight × qty, max L/W/H). Edit if needed before creating the label.</p>
                     <div class="form-group">
