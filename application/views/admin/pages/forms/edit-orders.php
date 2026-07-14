@@ -230,6 +230,18 @@
                                                         <small class="text-muted">(updated <?= htmlspecialchars($order_detls[0]['usps_tracking_updated_at']) ?>)</small>
                                                     <?php } ?>
                                                 </div>
+                                                <div class="mb-2">
+                                                    <strong>Pickup:</strong>
+                                                    <?php if (!empty($order_detls[0]['usps_pickup_confirmation'])) { ?>
+                                                        Confirmation <?= htmlspecialchars($order_detls[0]['usps_pickup_confirmation']) ?>
+                                                        <?php if (!empty($order_detls[0]['usps_pickup_date'])) { ?>
+                                                            on <?= htmlspecialchars($order_detls[0]['usps_pickup_date']) ?>
+                                                        <?php } ?>
+                                                        — <?= !empty($order_detls[0]['usps_pickup_status']) ? htmlspecialchars($order_detls[0]['usps_pickup_status']) : 'Scheduled' ?>
+                                                    <?php } else { ?>
+                                                        <span class="text-muted">Not scheduled</span>
+                                                    <?php } ?>
+                                                </div>
                                                 <div class="d-flex flex-wrap">
                                                     <?php if (empty($order_detls[0]['usps_tracking_number'])) { ?>
                                                         <button type="button" class="btn btn-primary btn-xs mr-1"
@@ -248,6 +260,17 @@
                                                         <button type="button" class="btn btn-success btn-xs update_usps_tracking"
                                                             data-order_id="<?= (int) $order_detls[0]['id'] ?>">
                                                             <i class="fas fa-sync-alt"></i> Update Tracking
+                                                        </button>
+                                                    <?php } ?>
+                                                    <?php if (empty($order_detls[0]['usps_pickup_confirmation'])) { ?>
+                                                        <button type="button" class="btn btn-warning btn-xs mr-1"
+                                                            data-toggle="modal" data-target="#usps_pickup_modal">
+                                                            <i class="fas fa-truck"></i> Schedule Pickup
+                                                        </button>
+                                                    <?php } else { ?>
+                                                        <button type="button" class="btn btn-danger btn-xs cancel_usps_pickup"
+                                                            data-order_id="<?= (int) $order_detls[0]['id'] ?>">
+                                                            <i class="fas fa-times"></i> Cancel Pickup
                                                         </button>
                                                     <?php } ?>
                                                 </div>
@@ -1193,6 +1216,72 @@
                     </div>
                     <small class="text-muted d-block mb-3">Uses USPS Ground Advantage. Missing dimensions default to 6×6×6 in.</small>
                     <button type="submit" class="btn btn-success" id="usps_label_submit_btn">Create Label</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- USPS Pickup Modal -->
+<div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" id="usps_pickup_modal"
+    data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule USPS Carrier Pickup</h5>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <?php
+                $pickup_weight = (!empty($sp_weight) && $sp_weight !== '') ? $sp_weight : '';
+                $next_pickup = !empty($usps_next_pickup_date) ? $usps_next_pickup_date : date('Y-m-d', strtotime('+1 weekday'));
+                ?>
+                <form id="usps_pickup_form" method="POST" action="<?= base_url('admin/orders/schedule_usps_pickup'); ?>">
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>" />
+                    <input type="hidden" name="order_id" value="<?= (int) $order_detls[0]['id'] ?>" />
+                    <p class="text-muted small mb-3">Pickup uses your ship-from address from Shipping Settings. USPS free carrier pickup is Mon–Sat (excluding holidays).</p>
+                    <div class="form-group">
+                        <label for="usps_pickup_date">Pickup Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="pickup_date" id="usps_pickup_date" value="<?= htmlspecialchars($next_pickup) ?>" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_pickup_weight">Estimated Weight (kg) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="estimated_weight" id="usps_pickup_weight" value="<?= $pickup_weight !== '' ? htmlspecialchars((string) $pickup_weight) : '' ?>" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_package_count">Number of Packages</label>
+                        <input type="number" step="1" min="1" class="form-control" name="package_count" id="usps_package_count" value="1" />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_package_type">Package Type</label>
+                        <select class="form-control" name="package_type" id="usps_package_type">
+                            <option value="FIRST-CLASS_PACKAGE_SERVICE" selected>Ground Advantage / First-Class Package</option>
+                            <option value="PRIORITY_MAIL">Priority Mail</option>
+                            <option value="PRIORITY_MAIL_EXPRESS">Priority Mail Express</option>
+                            <option value="RETURNS">Returns</option>
+                            <option value="INTERNATIONAL">International</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_package_location">Package Location</label>
+                        <select class="form-control" name="package_location" id="usps_package_location">
+                            <option value="FRONT_DOOR" selected>Front Door</option>
+                            <option value="BACK_DOOR">Back Door</option>
+                            <option value="SIDE_DOOR">Side Door</option>
+                            <option value="KNOCK_ON_DOOR">Knock on Door</option>
+                            <option value="MAILBOX">Mailbox</option>
+                            <option value="OFFICE">Office</option>
+                            <option value="MAIL_ROOM">Mail Room</option>
+                            <option value="RECEPTION">Reception</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_special_instructions">Special Instructions</label>
+                        <textarea class="form-control" name="special_instructions" id="usps_special_instructions" rows="2" maxlength="255" placeholder="Optional notes for the carrier"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning" id="usps_pickup_submit_btn">Schedule Pickup</button>
                 </form>
             </div>
         </div>

@@ -153,6 +153,11 @@
                                         <label class="mb-2" for="usps_from_phone">Ship-from Phone</label>
                                         <input type="text" class="form-control mb-2" name="usps_from_phone" id="usps_from_phone" value="<?= htmlspecialchars(@$settings['usps_from_phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
                                     </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_email">Ship-from Email <small>(for pickup)</small></label>
+                                        <input type="email" class="form-control mb-2" name="usps_from_email" id="usps_from_email" value="<?= htmlspecialchars(@$settings['usps_from_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Required if phone empty for pickup" />
+                                        <small class="text-muted">USPS carrier pickup needs phone or email on the ship-from contact.</small>
+                                    </div>
                                 </div>
 
                                 <div class="row">

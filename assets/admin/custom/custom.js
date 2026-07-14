@@ -8145,3 +8145,92 @@ $(document).on('click', '.update_usps_tracking', function (e) {
         },
     })
 })
+
+/* USPS carrier pickup */
+$(document).on('submit', '#usps_pickup_form', function (e) {
+    e.preventDefault()
+    var $form = $(this)
+    var $btn = $('#usps_pickup_submit_btn')
+    $btn.attr('disabled', true).text('Scheduling...')
+    var formdata = new FormData(this)
+    formdata.append(csrfName, csrfHash)
+    $.ajax({
+        type: 'POST',
+        url: $form.attr('action'),
+        data: formdata,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function (result) {
+            csrfName = result.csrfName
+            csrfHash = result.csrfHash
+            $btn.attr('disabled', false).text('Schedule Pickup')
+            if (result.error == false) {
+                iziToast.success({
+                    title: 'Success',
+                    message: result.message,
+                })
+                setTimeout(function () {
+                    location.reload()
+                }, 1000)
+            } else {
+                iziToast.error({
+                    title: 'Error',
+                    message: result.message,
+                })
+            }
+        },
+        error: function () {
+            $btn.attr('disabled', false).text('Schedule Pickup')
+            iziToast.error({
+                title: 'Error',
+                message: 'Something went wrong while scheduling the USPS pickup.',
+            })
+        },
+    })
+})
+
+$(document).on('click', '.cancel_usps_pickup', function (e) {
+    e.preventDefault()
+    var orderId = $(this).data('order_id')
+    var $btn = $(this)
+    if (!confirm('Cancel the scheduled USPS carrier pickup for this order?')) {
+        return
+    }
+    $btn.attr('disabled', true)
+    $.ajax({
+        type: 'POST',
+        url: base_url + 'admin/orders/cancel_usps_pickup',
+        data: {
+            order_id: orderId,
+            [csrfName]: csrfHash,
+        },
+        dataType: 'json',
+        success: function (result) {
+            csrfName = result.csrfName
+            csrfHash = result.csrfHash
+            $btn.attr('disabled', false)
+            if (result.error == false) {
+                iziToast.success({
+                    title: 'Success',
+                    message: result.message,
+                })
+                setTimeout(function () {
+                    location.reload()
+                }, 1000)
+            } else {
+                iziToast.error({
+                    title: 'Error',
+                    message: result.message,
+                })
+            }
+        },
+        error: function () {
+            $btn.attr('disabled', false)
+            iziToast.error({
+                title: 'Error',
+                message: 'Failed to cancel USPS pickup.',
+            })
+        },
+    })
+})

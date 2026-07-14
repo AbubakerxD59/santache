@@ -635,6 +635,8 @@ class Orders extends CI_Controller
                 $this->data['pickup_location'] = $pickup_location;
                 $this->data['settings'] = get_settings('system_settings', true);
                 $this->data['shiprocket_settings'] = get_settings('shipping_method', true);
+                $this->load->library(['usps']);
+                $this->data['usps_next_pickup_date'] = $this->usps->next_pickup_date();
                 $this->load->view('admin/template', $this->data);
             } else {
                 redirect('admin/orders/', 'refresh');
@@ -1707,6 +1709,167 @@ class Orders extends CI_Controller
             'tracking_status' => $status,
             'status_category' => $track['status_category'] ?? '',
             'events' => $track['events'] ?? [],
+        ];
+        print_r(json_encode($this->response));
+    }
+
+    /**
+     * Schedule USPS carrier package pickup for an order (uses ship-from address).
+     */
+    public function schedule_usps_pickup()
+    {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect('admin/login', 'refresh');
+            return;
+        }
+
+        if (!has_permissions('update', 'orders') && !has_permissions('create', 'orders')) {
+            $this->response['error'] = true;
+            $this->response['message'] = PERMISSION_ERROR_MSG;
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->form_validation->set_rules('order_id', 'Order Id', 'trim|required|numeric|xss_clean');
+        $this->form_validation->set_rules('pickup_date', 'Pickup Date', 'trim|required|xss_clean');
+        $this->form_validation->set_rules('estimated_weight', 'Estimated Weight (kg)', 'trim|required|numeric|xss_clean|greater_than[0]');
+        $this->form_validation->set_rules('package_count', 'Package Count', 'trim|numeric|xss_clean');
+        $this->form_validation->set_rules('package_type', 'Package Type', 'trim|xss_clean');
+        $this->form_validation->set_rules('package_location', 'Package Location', 'trim|xss_clean');
+        $this->form_validation->set_rules('special_instructions', 'Special Instructions', 'trim|xss_clean');
+
+        if (!$this->form_validation->run()) {
+            $this->response['error'] = true;
+            $this->response['message'] = strip_tags(validation_errors());
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $order_id = (int) $this->input->post('order_id', true);
+        $order = fetch_details('orders', ['id' => $order_id], 'id,usps_pickup_confirmation');
+        if (empty($order)) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'Order not found';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        if (!empty($order[0]['usps_pickup_confirmation'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'A USPS pickup is already scheduled for this order (' . $order[0]['usps_pickup_confirmation'] . '). Cancel it first to reschedule.';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->load->library(['usps']);
+        $result = $this->usps->schedule_pickup([
+            'pickup_date' => $this->input->post('pickup_date', true),
+            'estimated_weight_kg' => $this->input->post('estimated_weight', true),
+            'package_count' => $this->input->post('package_count', true) ?: 1,
+            'package_type' => $this->input->post('package_type', true),
+            'package_location' => $this->input->post('package_location', true),
+            'special_instructions' => $this->input->post('special_instructions', true),
+        ]);
+
+        if (!empty($result['error'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = $result['message'] ?? 'Failed to schedule USPS pickup';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            $this->response['data'] = $result;
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->db->where('id', $order_id)->update('orders', [
+            'usps_pickup_confirmation' => $result['confirmation_number'],
+            'usps_pickup_date' => $result['pickup_date'],
+            'usps_pickup_status' => 'Scheduled',
+        ]);
+
+        $this->response['error'] = false;
+        $this->response['message'] = 'USPS pickup scheduled successfully';
+        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+        $this->response['data'] = [
+            'confirmation_number' => $result['confirmation_number'],
+            'pickup_date' => $result['pickup_date'],
+            'pickup_status' => 'Scheduled',
+        ];
+        print_r(json_encode($this->response));
+    }
+
+    /**
+     * Cancel a scheduled USPS carrier pickup for an order.
+     */
+    public function cancel_usps_pickup()
+    {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect('admin/login', 'refresh');
+            return;
+        }
+
+        if (!has_permissions('update', 'orders')) {
+            $this->response['error'] = true;
+            $this->response['message'] = PERMISSION_ERROR_MSG;
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->form_validation->set_rules('order_id', 'Order Id', 'trim|required|numeric|xss_clean');
+        if (!$this->form_validation->run()) {
+            $this->response['error'] = true;
+            $this->response['message'] = strip_tags(validation_errors());
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $order_id = (int) $this->input->post('order_id', true);
+        $order = fetch_details('orders', ['id' => $order_id], 'id,usps_pickup_confirmation');
+        if (empty($order) || empty($order[0]['usps_pickup_confirmation'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'No USPS pickup confirmation found for this order.';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->load->library(['usps']);
+        $result = $this->usps->cancel_pickup($order[0]['usps_pickup_confirmation']);
+        if (!empty($result['error'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = $result['message'] ?? 'Failed to cancel USPS pickup';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->db->where('id', $order_id)->update('orders', [
+            'usps_pickup_confirmation' => null,
+            'usps_pickup_date' => null,
+            'usps_pickup_status' => 'Cancelled',
+        ]);
+
+        $this->response['error'] = false;
+        $this->response['message'] = 'USPS pickup cancelled successfully';
+        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+        $this->response['data'] = [
+            'pickup_status' => 'Cancelled',
         ];
         print_r(json_encode($this->response));
     }

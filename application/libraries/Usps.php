@@ -24,6 +24,7 @@ class Usps
     private $from_city = '';
     private $from_state = '';
     private $from_phone = '';
+    private $from_email = '';
 
     /** Default package size in inches when product dims are missing */
     const DEFAULT_LENGTH = 6;
@@ -58,6 +59,7 @@ class Usps
         $this->from_city = isset($settings['usps_from_city']) ? trim($settings['usps_from_city']) : '';
         $this->from_state = isset($settings['usps_from_state']) ? strtoupper(trim($settings['usps_from_state'])) : '';
         $this->from_phone = isset($settings['usps_from_phone']) ? preg_replace('/\D/', '', $settings['usps_from_phone']) : '';
+        $this->from_email = isset($settings['usps_from_email']) ? trim($settings['usps_from_email']) : '';
 
         if (isset($settings['usps_environment']) && strtolower($settings['usps_environment']) === 'tem') {
             $this->base_url = 'https://apis-tem.usps.com';
@@ -98,6 +100,19 @@ class Usps
             && !empty($this->crid)
             && !empty($this->mid)
             && !empty($this->account_number)
+            && !empty($this->from_street)
+            && !empty($this->from_city)
+            && !empty($this->from_state)
+            && !empty($this->from_first_name);
+    }
+
+    /**
+     * Ship-from address + OAuth credentials are enough for Carrier Pickup.
+     */
+    public function is_pickup_configured()
+    {
+        return $this->has_api_credentials()
+            && !empty($this->origin_zip)
             && !empty($this->from_street)
             && !empty($this->from_city)
             && !empty($this->from_state)
@@ -271,7 +286,7 @@ class Usps
             'client_id' => $this->consumer_key,
             'client_secret' => $this->consumer_secret,
             'grant_type' => 'client_credentials',
-            'scope' => 'addresses prices labels payments tracking',
+            'scope' => 'addresses prices labels payments tracking pickup',
         ]);
 
         $curl = curl_init();
@@ -734,6 +749,278 @@ class Usps
         ];
     }
 
+    /**
+     * Check whether the ship-from (or provided) address is eligible for carrier pickup.
+     *
+     * @param array $address streetAddress, city, state, ZIPCode
+     */
+    public function check_pickup_eligibility($address = [])
+    {
+        if (!$this->has_api_credentials()) {
+            return [
+                'error' => true,
+                'message' => 'USPS API credentials are not configured.',
+                'eligible' => false,
+            ];
+        }
+
+        $street = !empty($address['streetAddress']) ? $address['streetAddress'] : $this->from_street;
+        $city = !empty($address['city']) ? $address['city'] : $this->from_city;
+        $state = !empty($address['state']) ? $this->normalize_state($address['state']) : $this->normalize_state($this->from_state);
+        $zip = !empty($address['ZIPCode']) ? preg_replace('/\D/', '', $address['ZIPCode']) : $this->origin_zip;
+        if (strlen($zip) > 5) {
+            $zip = substr($zip, 0, 5);
+        }
+
+        if ($street === '' || ($zip === '' && ($city === '' || $state === ''))) {
+            return [
+                'error' => true,
+                'message' => 'Street address plus ZIP (or city/state) is required for pickup eligibility.',
+                'eligible' => false,
+            ];
+        }
+
+        $query = [
+            'streetAddress' => $street,
+            'city' => $city,
+            'state' => $state,
+            'ZIPCode' => $zip,
+        ];
+        $url = $this->base_url . '/pickup/v3/carrier-pickup/eligibility?' . http_build_query($query);
+        $response = $this->curl($url, 'GET');
+        $http = isset($response['apiStatus']) ? intval($response['apiStatus']) : 0;
+
+        if ($http >= 200 && $http < 300) {
+            return [
+                'error' => false,
+                'eligible' => true,
+                'message' => 'Address is eligible for USPS carrier pickup.',
+                'pickup_address' => isset($response['pickupAddress']) ? $response['pickupAddress'] : $response,
+                'raw' => $response,
+            ];
+        }
+
+        $message = 'Address is not eligible for USPS carrier pickup.';
+        if (!empty($response['error']['message'])) {
+            $message = $response['error']['message'];
+        } elseif (!empty($response['message'])) {
+            $message = $response['message'];
+        }
+
+        return [
+            'error' => true,
+            'eligible' => false,
+            'message' => $this->enrich_scope_error($message),
+            'raw' => $response,
+        ];
+    }
+
+    /**
+     * Schedule a USPS carrier package pickup at the configured ship-from address.
+     *
+     * @param array $data pickup_date, estimated_weight_lb/kg, package_count, package_type, package_location, special_instructions, email, phone
+     */
+    public function schedule_pickup($data = [])
+    {
+        if (!$this->is_pickup_configured()) {
+            return [
+                'error' => true,
+                'message' => 'USPS pickup settings incomplete. Add Consumer Key/Secret, Origin ZIP, and ship-from address in shipping settings.',
+            ];
+        }
+
+        $eligibility = $this->check_pickup_eligibility();
+        if (!empty($eligibility['error'])) {
+            return $eligibility;
+        }
+
+        $pickup_date = !empty($data['pickup_date']) ? $data['pickup_date'] : $this->next_pickup_date();
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $pickup_date)) {
+            return [
+                'error' => true,
+                'message' => 'Pickup date must be YYYY-MM-DD.',
+            ];
+        }
+
+        $weight_lb = isset($data['estimated_weight_lb'])
+            ? floatval($data['estimated_weight_lb'])
+            : $this->kg_to_lb(isset($data['estimated_weight_kg']) ? $data['estimated_weight_kg'] : 0);
+        if ($weight_lb < self::MIN_WEIGHT_LB) {
+            $weight_lb = self::MIN_WEIGHT_LB;
+        }
+
+        $package_count = isset($data['package_count']) ? max(1, intval($data['package_count'])) : 1;
+        $package_type = !empty($data['package_type']) ? strtoupper(trim($data['package_type'])) : 'FIRST-CLASS_PACKAGE_SERVICE';
+        $allowed_types = [
+            'FIRST-CLASS_PACKAGE_SERVICE',
+            'PRIORITY_MAIL_EXPRESS',
+            'PRIORITY_MAIL',
+            'RETURNS',
+            'INTERNATIONAL',
+            'OTHER',
+        ];
+        if (!in_array($package_type, $allowed_types, true)) {
+            $package_type = 'OTHER';
+        }
+
+        $package_location = !empty($data['package_location']) ? strtoupper(trim($data['package_location'])) : 'FRONT_DOOR';
+        $allowed_locations = [
+            'FRONT_DOOR', 'BACK_DOOR', 'SIDE_DOOR', 'KNOCK_ON_DOOR', 'MAIL_ROOM',
+            'OFFICE', 'RECEPTION', 'MAILBOX', 'OTHER',
+        ];
+        if (!in_array($package_location, $allowed_locations, true)) {
+            $package_location = 'FRONT_DOOR';
+        }
+
+        $phone = !empty($data['phone']) ? preg_replace('/\D/', '', $data['phone']) : $this->from_phone;
+        $email = !empty($data['email']) ? trim($data['email']) : $this->from_email;
+
+        $contact = [];
+        if ($email !== '') {
+            $contact[] = ['email' => $email];
+        }
+        if ($phone !== '') {
+            $contact[] = ['phone' => $phone];
+        }
+        if (empty($contact)) {
+            return [
+                'error' => true,
+                'message' => 'A contact phone or email is required to schedule a USPS pickup. Add ship-from phone/email in shipping settings.',
+            ];
+        }
+
+        $payload = [
+            'pickupDate' => $pickup_date,
+            'pickupAddress' => [
+                'firstName' => $this->from_first_name,
+                'lastName' => $this->from_last_name !== '' ? $this->from_last_name : 'Store',
+                'address' => [
+                    'streetAddress' => $this->from_street,
+                    'city' => $this->from_city,
+                    'state' => $this->normalize_state($this->from_state),
+                    'ZIPCode' => $this->origin_zip,
+                ],
+                'contact' => $contact,
+            ],
+            'packages' => [
+                [
+                    'packageType' => $package_type,
+                    'packageCount' => $package_count,
+                ],
+            ],
+            'estimatedWeight' => round($weight_lb, 2),
+            'pickupLocation' => [
+                'packageLocation' => $package_location,
+                'specialInstructions' => !empty($data['special_instructions'])
+                    ? substr(trim($data['special_instructions']), 0, 255)
+                    : '',
+            ],
+        ];
+
+        $url = $this->base_url . '/pickup/v3/carrier-pickup';
+        $response = $this->curl($url, 'POST', json_encode($payload));
+        $http = isset($response['apiStatus']) ? intval($response['apiStatus']) : 0;
+
+        if ($http >= 200 && $http < 300 && !empty($response['confirmationNumber'])) {
+            return [
+                'error' => false,
+                'message' => 'USPS carrier pickup scheduled successfully.',
+                'confirmation_number' => $response['confirmationNumber'],
+                'pickup_date' => !empty($response['pickupDate']) ? $response['pickupDate'] : $pickup_date,
+                'package_location' => $package_location,
+                'raw' => $response,
+            ];
+        }
+
+        $message = 'Failed to schedule USPS carrier pickup.';
+        if (!empty($response['error']['message'])) {
+            $message = $response['error']['message'];
+        } elseif (!empty($response['message'])) {
+            $message = $response['message'];
+        }
+
+        return [
+            'error' => true,
+            'message' => $this->enrich_scope_error($message),
+            'raw' => $response,
+        ];
+    }
+
+    /**
+     * Cancel a scheduled carrier pickup by confirmation number.
+     */
+    public function cancel_pickup($confirmation_number)
+    {
+        $confirmation_number = trim((string) $confirmation_number);
+        if ($confirmation_number === '') {
+            return [
+                'error' => true,
+                'message' => 'Confirmation number is required.',
+            ];
+        }
+
+        if (!$this->has_api_credentials()) {
+            return [
+                'error' => true,
+                'message' => 'USPS API credentials are not configured.',
+            ];
+        }
+
+        $url = $this->base_url . '/pickup/v3/carrier-pickup/' . rawurlencode($confirmation_number);
+        $response = $this->curl($url, 'DELETE');
+        $http = isset($response['apiStatus']) ? intval($response['apiStatus']) : 0;
+
+        if ($http >= 200 && $http < 300) {
+            return [
+                'error' => false,
+                'message' => 'USPS carrier pickup cancelled successfully.',
+                'confirmation_number' => $confirmation_number,
+                'raw' => $response,
+            ];
+        }
+
+        // Some cancels return empty body with 204
+        if ($http === 204) {
+            return [
+                'error' => false,
+                'message' => 'USPS carrier pickup cancelled successfully.',
+                'confirmation_number' => $confirmation_number,
+                'raw' => $response,
+            ];
+        }
+
+        $message = 'Failed to cancel USPS carrier pickup.';
+        if (!empty($response['error']['message'])) {
+            $message = $response['error']['message'];
+        } elseif (!empty($response['message'])) {
+            $message = $response['message'];
+        }
+
+        return [
+            'error' => true,
+            'message' => $this->enrich_scope_error($message),
+            'raw' => $response,
+        ];
+    }
+
+    /**
+     * Next USPS delivery day (Mon–Sat). Does not account for federal holidays.
+     */
+    public function next_pickup_date($from_timestamp = null)
+    {
+        $ts = $from_timestamp ? intval($from_timestamp) : time();
+        // Start from tomorrow
+        $ts = strtotime('+1 day', $ts);
+        for ($i = 0; $i < 10; $i++) {
+            $dow = intval(date('N', $ts)); // 1=Mon ... 7=Sun
+            if ($dow <= 6) {
+                return date('Y-m-d', $ts);
+            }
+            $ts = strtotime('+1 day', $ts);
+        }
+        return date('Y-m-d', strtotime('+1 day'));
+    }
+
     public function get_from_address()
     {
         return [
@@ -744,6 +1031,7 @@ class Usps
             'state' => $this->from_state,
             'ZIPCode' => $this->origin_zip,
             'phone' => $this->from_phone,
+            'email' => $this->from_email,
         ];
     }
 
@@ -894,6 +1182,11 @@ class Usps
         if (strtolower($method) == 'post') {
             $curl_options[CURLOPT_POST] = 1;
             $curl_options[CURLOPT_POSTFIELDS] = $data;
+        } elseif (strtoupper($method) === 'DELETE') {
+            $curl_options[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+            if (!empty($data)) {
+                $curl_options[CURLOPT_POSTFIELDS] = $data;
+            }
         } else {
             $curl_options[CURLOPT_CUSTOMREQUEST] = strtoupper($method);
         }

@@ -945,6 +945,7 @@ class Setting_model extends CI_Model
         $shipping_data['usps_from_city'] = isset($post['usps_from_city']) ? $post['usps_from_city'] : '';
         $shipping_data['usps_from_state'] = isset($post['usps_from_state']) ? $post['usps_from_state'] : '';
         $shipping_data['usps_from_phone'] = isset($post['usps_from_phone']) ? $post['usps_from_phone'] : '';
+        $shipping_data['usps_from_email'] = isset($post['usps_from_email']) ? $post['usps_from_email'] : '';
 
         $shipping_data = json_encode($shipping_data);
 
