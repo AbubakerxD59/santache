@@ -1164,23 +1164,31 @@
                 <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <?php
+                $sp = isset($suggested_parcel) ? $suggested_parcel : ['weight' => 0, 'length' => 0, 'breadth' => 0, 'height' => 0];
+                $sp_weight = (!empty($sp['weight']) && floatval($sp['weight']) > 0) ? floatval($sp['weight']) : '';
+                $sp_length = (!empty($sp['length']) && floatval($sp['length']) > 0) ? floatval($sp['length']) : '';
+                $sp_breadth = (!empty($sp['breadth']) && floatval($sp['breadth']) > 0) ? floatval($sp['breadth']) : '';
+                $sp_height = (!empty($sp['height']) && floatval($sp['height']) > 0) ? floatval($sp['height']) : '';
+                ?>
                 <form id="usps_label_form" method="POST" action="<?= base_url('admin/orders/create_usps_label'); ?>">
                     <input type="hidden" name="order_id" value="<?= (int) $order_detls[0]['id'] ?>" />
+                    <p class="text-muted small mb-3">Pre-filled from order item variants (sum weight × qty, max L/W/H). Edit if needed before creating the label.</p>
                     <div class="form-group">
                         <label for="usps_parcel_weight">Parcel Weight (kg) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0.01" class="form-control" name="parcel_weight" id="usps_parcel_weight" required />
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="parcel_weight" id="usps_parcel_weight" value="<?= $sp_weight !== '' ? htmlspecialchars((string) $sp_weight) : '' ?>" required />
                     </div>
                     <div class="form-group">
                         <label for="usps_parcel_length">Length (cm)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_length" id="usps_parcel_length" />
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_length" id="usps_parcel_length" value="<?= $sp_length !== '' ? htmlspecialchars((string) $sp_length) : '' ?>" />
                     </div>
                     <div class="form-group">
                         <label for="usps_parcel_breadth">Breadth / Width (cm)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_breadth" id="usps_parcel_breadth" />
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_breadth" id="usps_parcel_breadth" value="<?= $sp_breadth !== '' ? htmlspecialchars((string) $sp_breadth) : '' ?>" />
                     </div>
                     <div class="form-group">
                         <label for="usps_parcel_height">Height (cm)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_height" id="usps_parcel_height" />
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_height" id="usps_parcel_height" value="<?= $sp_height !== '' ? htmlspecialchars((string) $sp_height) : '' ?>" />
                     </div>
                     <small class="text-muted d-block mb-3">Uses USPS Ground Advantage. Missing dimensions default to 6×6×6 in.</small>
                     <button type="submit" class="btn btn-success" id="usps_label_submit_btn">Create Label</button>

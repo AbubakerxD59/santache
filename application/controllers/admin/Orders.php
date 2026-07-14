@@ -590,8 +590,40 @@ class Orders extends CI_Controller
                     $temp['updated_by'] = $updated_username[0]['username'];
                     $temp['product_slug'] = $row['product_slug'];
                     $temp['is_sent'] = $row['is_sent'];
+
+                    $variant_dims = fetch_details('product_variants', ['id' => $row['product_variant_id']], 'weight,height,breadth,length');
+                    $temp['weight'] = isset($variant_dims[0]['weight']) ? floatval($variant_dims[0]['weight']) : 0;
+                    $temp['height'] = isset($variant_dims[0]['height']) ? floatval($variant_dims[0]['height']) : 0;
+                    $temp['breadth'] = isset($variant_dims[0]['breadth']) ? floatval($variant_dims[0]['breadth']) : 0;
+                    $temp['length'] = isset($variant_dims[0]['length']) ? floatval($variant_dims[0]['length']) : 0;
+
                     array_push($items, $temp);
                 }
+
+                // Suggested USPS parcel: sum weight × qty, max L/W/H across items
+                $suggested_parcel = [
+                    'weight' => 0,
+                    'length' => 0,
+                    'breadth' => 0,
+                    'height' => 0,
+                ];
+                foreach ($items as $item) {
+                    if (isset($item['product_type']) && $item['product_type'] == 'digital_product') {
+                        continue;
+                    }
+                    $qty = isset($item['quantity']) ? intval($item['quantity']) : 1;
+                    if ($qty < 1) {
+                        $qty = 1;
+                    }
+                    $suggested_parcel['weight'] += (isset($item['weight']) ? floatval($item['weight']) : 0) * $qty;
+                    $suggested_parcel['length'] = max($suggested_parcel['length'], isset($item['length']) ? floatval($item['length']) : 0);
+                    $suggested_parcel['breadth'] = max($suggested_parcel['breadth'], isset($item['breadth']) ? floatval($item['breadth']) : 0);
+                    $suggested_parcel['height'] = max($suggested_parcel['height'], isset($item['height']) ? floatval($item['height']) : 0);
+                }
+                $suggested_parcel['weight'] = round($suggested_parcel['weight'], 2);
+                $suggested_parcel['length'] = round($suggested_parcel['length'], 2);
+                $suggested_parcel['breadth'] = round($suggested_parcel['breadth'], 2);
+                $suggested_parcel['height'] = round($suggested_parcel['height'], 2);
 
                 $pickup_location = fetch_details('pickup_locations', ['status' => 1], 'id,pickup_location');
 
@@ -599,6 +631,7 @@ class Orders extends CI_Controller
                 $this->data['bank_transfer'] = $bank_transfer;
                 $this->data['order_tracking'] = $order_tracking;
                 $this->data['items'] = $items;
+                $this->data['suggested_parcel'] = $suggested_parcel;
                 $this->data['pickup_location'] = $pickup_location;
                 $this->data['settings'] = get_settings('system_settings', true);
                 $this->data['shiprocket_settings'] = get_settings('shipping_method', true);
