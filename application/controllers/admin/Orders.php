@@ -1444,4 +1444,237 @@ class Orders extends CI_Controller
             redirect('admin/login', 'refresh');
         }
     }
+
+    /**
+     * Create USPS Ground Advantage shipping label for an order.
+     */
+    public function create_usps_label()
+    {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect('admin/login', 'refresh');
+            return;
+        }
+
+        if (!has_permissions('update', 'orders') && !has_permissions('create', 'orders')) {
+            $this->response['error'] = true;
+            $this->response['message'] = PERMISSION_ERROR_MSG;
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->form_validation->set_rules('order_id', 'Order Id', 'trim|required|numeric|xss_clean');
+        $this->form_validation->set_rules('parcel_weight', 'Parcel Weight (kg)', 'trim|required|numeric|xss_clean|greater_than[0]');
+        $this->form_validation->set_rules('parcel_length', 'Length (cm)', 'trim|numeric|xss_clean');
+        $this->form_validation->set_rules('parcel_breadth', 'Breadth (cm)', 'trim|numeric|xss_clean');
+        $this->form_validation->set_rules('parcel_height', 'Height (cm)', 'trim|numeric|xss_clean');
+
+        if (!$this->form_validation->run()) {
+            $this->response['error'] = true;
+            $this->response['message'] = strip_tags(validation_errors());
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $order_id = (int) $this->input->post('order_id', true);
+        $order = fetch_details('orders', ['id' => $order_id]);
+        if (empty($order)) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'Order not found';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        if (!empty($order[0]['usps_tracking_number'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'A USPS label already exists for this order (' . $order[0]['usps_tracking_number'] . ').';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $address = fetch_details('addresses', ['id' => $order[0]['address_id']]);
+        if (empty($address)) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'Order shipping address not found';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $name_parts = preg_split('/\s+/', trim($address[0]['name'] ?? 'Customer'), 2);
+        $to_address = [
+            'firstName' => $name_parts[0] ?: 'Customer',
+            'lastName' => isset($name_parts[1]) ? $name_parts[1] : '',
+            'streetAddress' => $address[0]['address'] ?? '',
+            'secondaryAddress' => $address[0]['landmark'] ?? '',
+            'city' => $address[0]['city'] ?? '',
+            'state' => $address[0]['state'] ?? '',
+            'ZIPCode' => $address[0]['pincode'] ?? '',
+            'phone' => !empty($address[0]['mobile']) ? $address[0]['mobile'] : ($order[0]['mobile'] ?? ''),
+        ];
+
+        $this->load->library(['usps']);
+        $label = $this->usps->create_label([
+            'to_address' => $to_address,
+            'weight_kg' => $this->input->post('parcel_weight', true),
+            'length_cm' => $this->input->post('parcel_length', true),
+            'breadth_cm' => $this->input->post('parcel_breadth', true),
+            'height_cm' => $this->input->post('parcel_height', true),
+            'package_value' => isset($order[0]['final_total']) ? $order[0]['final_total'] : 0,
+        ]);
+
+        if (!empty($label['error'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = $label['message'] ?? 'Failed to create USPS label';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            $this->response['data'] = $label;
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $label_url = '';
+        if (!empty($label['label_pdf'])) {
+            $dir = FCPATH . 'uploads/usps_labels/';
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            $filename = 'usps_label_' . $order_id . '_' . time() . '.pdf';
+            if (@file_put_contents($dir . $filename, $label['label_pdf']) !== false) {
+                $label_url = 'uploads/usps_labels/' . $filename;
+            }
+        }
+
+        $tracking_number = $label['tracking_number'] ?? '';
+        $tracking_url = $label['tracking_url'] ?? '';
+        $status = 'Label created';
+
+        // Optional first tracking fetch
+        if ($tracking_number !== '') {
+            $track = $this->usps->track($tracking_number);
+            if (empty($track['error']) && !empty($track['status'])) {
+                $status = $track['status'];
+            }
+        }
+
+        $order_update = [
+            'usps_tracking_number' => $tracking_number,
+            'usps_tracking_status' => $status,
+            'usps_label_url' => $label_url,
+            'usps_tracking_updated_at' => date('Y-m-d H:i:s'),
+        ];
+        $this->db->where('id', $order_id)->update('orders', $order_update);
+
+        // Keep customer-facing tracking fields in sync
+        $existing = fetch_details('order_tracking', ['order_id' => $order_id]);
+        $tracking_row = [
+            'order_id' => $order_id,
+            'courier_agency' => 'USPS',
+            'tracking_id' => $tracking_number,
+            'url' => $tracking_url,
+            'awb_code' => $tracking_number,
+            'label_url' => $label_url ? base_url($label_url) : '',
+            'status' => $status,
+        ];
+        if (!empty($existing)) {
+            $this->db->where('order_id', $order_id)->update('order_tracking', $tracking_row);
+        } else {
+            $this->db->insert('order_tracking', $tracking_row);
+        }
+
+        $this->response['error'] = false;
+        $this->response['message'] = 'USPS label created successfully';
+        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+        $this->response['data'] = [
+            'tracking_number' => $tracking_number,
+            'tracking_status' => $status,
+            'label_url' => $label_url ? base_url($label_url) : '',
+            'tracking_url' => $tracking_url,
+        ];
+        print_r(json_encode($this->response));
+    }
+
+    /**
+     * Refresh USPS tracking status for an order.
+     */
+    public function update_usps_tracking()
+    {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect('admin/login', 'refresh');
+            return;
+        }
+
+        if (!has_permissions('update', 'orders')) {
+            $this->response['error'] = true;
+            $this->response['message'] = PERMISSION_ERROR_MSG;
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->form_validation->set_rules('order_id', 'Order Id', 'trim|required|numeric|xss_clean');
+        if (!$this->form_validation->run()) {
+            $this->response['error'] = true;
+            $this->response['message'] = strip_tags(validation_errors());
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $order_id = (int) $this->input->post('order_id', true);
+        $order = fetch_details('orders', ['id' => $order_id], 'id,usps_tracking_number,usps_label_url');
+        if (empty($order) || empty($order[0]['usps_tracking_number'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = 'No USPS tracking number found for this order. Create a label first.';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $this->load->library(['usps']);
+        $track = $this->usps->track($order[0]['usps_tracking_number']);
+        if (!empty($track['error'])) {
+            $this->response['error'] = true;
+            $this->response['message'] = $track['message'] ?? 'Failed to update USPS tracking';
+            $this->response['csrfName'] = $this->security->get_csrf_token_name();
+            $this->response['csrfHash'] = $this->security->get_csrf_hash();
+            print_r(json_encode($this->response));
+            return;
+        }
+
+        $status = $track['status'] ?? 'Status unavailable';
+        $this->db->where('id', $order_id)->update('orders', [
+            'usps_tracking_status' => $status,
+            'usps_tracking_updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $this->db->where('order_id', $order_id)->update('order_tracking', [
+            'status' => $status,
+            'courier_agency' => 'USPS',
+            'tracking_id' => $order[0]['usps_tracking_number'],
+        ]);
+
+        $this->response['error'] = false;
+        $this->response['message'] = 'USPS tracking updated successfully';
+        $this->response['csrfName'] = $this->security->get_csrf_token_name();
+        $this->response['csrfHash'] = $this->security->get_csrf_hash();
+        $this->response['data'] = [
+            'tracking_number' => $order[0]['usps_tracking_number'],
+            'tracking_status' => $status,
+            'status_category' => $track['status_category'] ?? '',
+            'events' => $track['events'] ?? [],
+        ];
+        print_r(json_encode($this->response));
+    }
 }

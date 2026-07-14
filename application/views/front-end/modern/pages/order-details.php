@@ -132,6 +132,17 @@
                                         </span>
                                     </div>
                                 </div>
+                                <?php if (!empty($order['usps_tracking_status'])) { ?>
+                                <div class="col-md-12">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">USPS Status</span>
+                                        <span class="fw-semibold text-end"><?= htmlspecialchars($order['usps_tracking_status']) ?></span>
+                                    </div>
+                                    <?php if (!empty($order['usps_tracking_updated_at'])) { ?>
+                                        <small class="text-muted">Updated: <?= htmlspecialchars($order['usps_tracking_updated_at']) ?></small>
+                                    <?php } ?>
+                                </div>
+                                <?php } ?>
                             </div>
                         </div>
                     </div>

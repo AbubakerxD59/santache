@@ -33,10 +33,16 @@ class Area extends CI_Controller
             $settings = get_settings('system_settings', true);
             $this->data['title'] = 'Area Management | ' . $settings['app_name'];
             $this->data['meta_description'] = ' Area Management  | ' . $settings['app_name'];
+            $this->data['selected_city'] = [];
             if (isset($_GET['edit_id'])) {
                 $this->data['fetched_data'] = fetch_details('areas', ['id' => $_GET['edit_id']]);
+                if (!empty($this->data['fetched_data'][0]['city_id'])) {
+                    $city = fetch_details('cities', ['id' => $this->data['fetched_data'][0]['city_id']]);
+                    if (!empty($city[0])) {
+                        $this->data['selected_city'] = $city[0];
+                    }
+                }
             }
-            $this->data['city'] = fetch_details('cities', '');
             $this->data['zipcodes'] = fetch_details('zipcodes', '');
             $this->load->view('admin/template', $this->data);
         } else {
@@ -310,10 +316,16 @@ class Area extends CI_Controller
             $settings = get_settings('system_settings', true);
             $this->data['title'] = 'Zipcodes Management | ' . $settings['app_name'];
             $this->data['meta_description'] = ' Zipcode Management  | ' . $settings['app_name'];
+            $this->data['selected_city'] = [];
             if (isset($_GET['edit_id'])) {
                 $this->data['fetched_data'] = fetch_details('zipcodes', ['id' => $_GET['edit_id']]);
+                if (!empty($this->data['fetched_data'][0]['city_id'])) {
+                    $city = fetch_details('cities', ['id' => $this->data['fetched_data'][0]['city_id']]);
+                    if (!empty($city[0])) {
+                        $this->data['selected_city'] = $city[0];
+                    }
+                }
             }
-            $this->data['city'] = fetch_details('cities', '');
             $this->load->view('admin/template', $this->data);
         } else {
             redirect('admin/login', 'refresh');

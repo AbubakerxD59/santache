@@ -104,7 +104,54 @@
                                     <div class="form-group col-5">
                                         <label class="mb-2">Mail Class</label>
                                         <input type="text" class="form-control mb-2" value="USPS Ground Advantage" disabled />
-                                        <small class="text-muted">Always uses Ground Advantage for rate quotes.</small>
+                                        <small class="text-muted">Always uses Ground Advantage for rate quotes and labels.</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h5>USPS Labels &amp; Tracking</h5>
+                                        <small class="text-muted">Required for label creation (USPS Ship + EPS). Tracking only needs Consumer Key/Secret.</small>
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_crid">CRID</label>
+                                        <input type="text" class="form-control mb-2" name="usps_crid" id="usps_crid" value="<?= htmlspecialchars(@$settings['usps_crid'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Customer Registration ID" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_mid">MID</label>
+                                        <input type="text" class="form-control mb-2" name="usps_mid" id="usps_mid" value="<?= htmlspecialchars(@$settings['usps_mid'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Mailer ID" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_manifest_mid">Manifest MID <small>(optional)</small></label>
+                                        <input type="text" class="form-control mb-2" name="usps_manifest_mid" id="usps_manifest_mid" value="<?= htmlspecialchars(@$settings['usps_manifest_mid'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Defaults to MID if empty" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_account_number">EPS Account Number</label>
+                                        <input type="text" class="form-control mb-2" name="usps_account_number" id="usps_account_number" value="<?= htmlspecialchars(@$settings['usps_account_number'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Enterprise Payment Account #" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_first_name">Ship-from First Name</label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_first_name" id="usps_from_first_name" value="<?= htmlspecialchars(@$settings['usps_from_first_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_last_name">Ship-from Last Name</label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_last_name" id="usps_from_last_name" value="<?= htmlspecialchars(@$settings['usps_from_last_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_street">Ship-from Street</label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_street" id="usps_from_street" value="<?= htmlspecialchars(@$settings['usps_from_street'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_city">Ship-from City</label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_city" id="usps_from_city" value="<?= htmlspecialchars(@$settings['usps_from_city'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_state">Ship-from State <small>(2-letter)</small></label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_state" id="usps_from_state" value="<?= htmlspecialchars(@$settings['usps_from_state'] ?? '', ENT_QUOTES, 'UTF-8') ?>" maxlength="2" placeholder="e.g. NY" />
+                                    </div>
+                                    <div class="form-group col-5">
+                                        <label class="mb-2" for="usps_from_phone">Ship-from Phone</label>
+                                        <input type="text" class="form-control mb-2" name="usps_from_phone" id="usps_from_phone" value="<?= htmlspecialchars(@$settings['usps_from_phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
                                     </div>
                                 </div>
 

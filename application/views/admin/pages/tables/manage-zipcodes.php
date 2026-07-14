@@ -48,15 +48,16 @@
                                         <label for="city_list">City <span class='text-danger text-xs'>*</span></label>
                                     </div>
                                     <div class="form-group col-md-8">
-                                        <select class="form-control select2" name="city" id="city_list"
-                                            style="width: 100%;">
-                                            <option value="">Select City</option>
-                                            <?php foreach ($city as $row) { ?>
-                                                <option value="<?= $row['id'] ?>" <?= (isset($fetched_data[0]['city_id']) && $row['id'] == $fetched_data[0]['city_id']) ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($row['name']) ?>
+                                        <select class="form-control city_list" name="city" id="city_list"
+                                            style="width: 100%;" required>
+                                            <option value="">Search City</option>
+                                            <?php if (!empty($selected_city['id'])) { ?>
+                                                <option value="<?= (int) $selected_city['id'] ?>" selected>
+                                                    <?= htmlspecialchars($selected_city['name'] ?? '') ?>
                                                 </option>
                                             <?php } ?>
                                         </select>
+                                        <small class="text-muted">Start typing to search cities</small>
                                     </div>
                                 </div>
 

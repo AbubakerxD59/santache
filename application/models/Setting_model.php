@@ -935,6 +935,16 @@ class Setting_model extends CI_Model
         $shipping_data['usps_environment'] = isset($post['usps_environment']) && !empty($post['usps_environment']) ? $post['usps_environment'] : 'production';
         $shipping_data['usps_price_type'] = 'RETAIL';
         $shipping_data['usps_mail_class'] = 'USPS_GROUND_ADVANTAGE';
+        $shipping_data['usps_crid'] = isset($post['usps_crid']) ? $post['usps_crid'] : '';
+        $shipping_data['usps_mid'] = isset($post['usps_mid']) ? $post['usps_mid'] : '';
+        $shipping_data['usps_manifest_mid'] = isset($post['usps_manifest_mid']) ? $post['usps_manifest_mid'] : '';
+        $shipping_data['usps_account_number'] = isset($post['usps_account_number']) ? $post['usps_account_number'] : '';
+        $shipping_data['usps_from_first_name'] = isset($post['usps_from_first_name']) ? $post['usps_from_first_name'] : '';
+        $shipping_data['usps_from_last_name'] = isset($post['usps_from_last_name']) ? $post['usps_from_last_name'] : '';
+        $shipping_data['usps_from_street'] = isset($post['usps_from_street']) ? $post['usps_from_street'] : '';
+        $shipping_data['usps_from_city'] = isset($post['usps_from_city']) ? $post['usps_from_city'] : '';
+        $shipping_data['usps_from_state'] = isset($post['usps_from_state']) ? $post['usps_from_state'] : '';
+        $shipping_data['usps_from_phone'] = isset($post['usps_from_phone']) ? $post['usps_from_phone'] : '';
 
         $shipping_data = json_encode($shipping_data);
 

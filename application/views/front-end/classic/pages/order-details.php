@@ -99,6 +99,13 @@
                                             <?= $order['courier_agency'] ?>
                                         </span>
                                     </p>
+                                    <?php if (!empty($order['usps_tracking_status'])) { ?>
+                                    <p class="text-muted">USPS Status
+                                        <span class="fw-bold text-dark"> :
+                                            <?= htmlspecialchars($order['usps_tracking_status']) ?>
+                                        </span>
+                                    </p>
+                                    <?php } ?>
                                 <?php } else { ?>
                                     Tracking information not available
                                 <?php } ?>

@@ -256,13 +256,15 @@ class Area_model extends CI_Model
 
     function get_cities_list($search = "")
     {
-        // Fetch users
-        $this->db->select('*');
-        $this->db->where("name like '%" . $search . "%'");
-        $fetched_records = $this->db->get('cities');
-        $cities = $fetched_records->result_array();
+        $search = trim((string) $search);
+        $this->db->select('id, name');
+        if ($search !== '') {
+            $this->db->like('name', $search);
+        }
+        $this->db->order_by('name', 'ASC');
+        $this->db->limit(25);
+        $cities = $this->db->get('cities')->result_array();
 
-        // Initialize Array with fetched data
         $data = array();
         foreach ($cities as $city) {
             $data[] = array("id" => $city['id'], "text" => $city['name']);

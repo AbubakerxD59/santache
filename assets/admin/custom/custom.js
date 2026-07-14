@@ -8059,3 +8059,89 @@ window.isValidPhoneChar = function (event) {
     return false;
 };
 
+
+/* USPS label + tracking */
+$(document).on('submit', '#usps_label_form', function (e) {
+    e.preventDefault()
+    var $form = $(this)
+    var $btn = $('#usps_label_submit_btn')
+    $btn.attr('disabled', true).text('Creating...')
+    var formdata = new FormData(this)
+    formdata.append(csrfName, csrfHash)
+    $.ajax({
+        type: 'POST',
+        url: $form.attr('action'),
+        data: formdata,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function (result) {
+            csrfName = result.csrfName
+            csrfHash = result.csrfHash
+            $btn.attr('disabled', false).text('Create Label')
+            if (result.error == false) {
+                iziToast.success({
+                    title: 'Success',
+                    message: result.message,
+                })
+                setTimeout(function () {
+                    location.reload()
+                }, 1000)
+            } else {
+                iziToast.error({
+                    title: 'Error',
+                    message: result.message,
+                })
+            }
+        },
+        error: function () {
+            $btn.attr('disabled', false).text('Create Label')
+            iziToast.error({
+                title: 'Error',
+                message: 'Something went wrong while creating the USPS label.',
+            })
+        },
+    })
+})
+
+$(document).on('click', '.update_usps_tracking', function (e) {
+    e.preventDefault()
+    var orderId = $(this).data('order_id')
+    var $btn = $(this)
+    $btn.attr('disabled', true)
+    $.ajax({
+        type: 'POST',
+        url: base_url + 'admin/orders/update_usps_tracking',
+        data: {
+            order_id: orderId,
+            [csrfName]: csrfHash,
+        },
+        dataType: 'json',
+        success: function (result) {
+            csrfName = result.csrfName
+            csrfHash = result.csrfHash
+            $btn.attr('disabled', false)
+            if (result.error == false) {
+                if (result.data && result.data.tracking_status) {
+                    $('#usps_tracking_status_text').text(result.data.tracking_status)
+                }
+                iziToast.success({
+                    title: 'Success',
+                    message: result.message,
+                })
+            } else {
+                iziToast.error({
+                    title: 'Error',
+                    message: result.message,
+                })
+            }
+        },
+        error: function () {
+            $btn.attr('disabled', false)
+            iziToast.error({
+                title: 'Error',
+                message: 'Failed to update USPS tracking.',
+            })
+        },
+    })
+})

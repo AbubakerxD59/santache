@@ -3052,6 +3052,16 @@ function fetch_orders($order_id = NULL, $user_id = NULL, $status = NULL, $delive
         $order_details[$i]['tracking_id'] = (isset($order_tracking) && !empty($order_tracking) && !empty($order_tracking[0]['tracking_id'])) ? $order_tracking[0]['tracking_id'] : "";
         $order_details[$i]['delivery_boy_id'] = (isset($order_details[$i]['delivery_boy_id']) && !empty($order_details[$i]['delivery_boy_id'])) ? $order_details[$i]['delivery_boy_id'] : "";
         $order_details[$i]['url'] = (isset($order_tracking) && !empty($order_tracking) && !empty($order_tracking[0]['url'])) ? $order_tracking[0]['url'] : "";
+        // Prefer USPS fields from orders when present
+        if (!empty($order_details[$i]['usps_tracking_number'])) {
+            $order_details[$i]['courier_agency'] = 'USPS';
+            $order_details[$i]['tracking_id'] = $order_details[$i]['usps_tracking_number'];
+            $order_details[$i]['url'] = 'https://tools.usps.com/go/TrackConfirmAction_input?origTrackNum=' . urlencode($order_details[$i]['usps_tracking_number']);
+        }
+        $order_details[$i]['usps_tracking_status'] = isset($order_details[$i]['usps_tracking_status']) ? $order_details[$i]['usps_tracking_status'] : '';
+        $order_details[$i]['usps_tracking_number'] = isset($order_details[$i]['usps_tracking_number']) ? $order_details[$i]['usps_tracking_number'] : '';
+        $order_details[$i]['usps_label_url'] = !empty($order_details[$i]['usps_label_url']) ? base_url($order_details[$i]['usps_label_url']) : '';
+        $order_details[$i]['usps_tracking_updated_at'] = isset($order_details[$i]['usps_tracking_updated_at']) ? $order_details[$i]['usps_tracking_updated_at'] : '';
         $order_details[$i]['is_delivery_charge_returnable'] = (isset($order_details[$i]['is_delivery_charge_returnable']) && !empty($order_details[$i]['is_delivery_charge_returnable'])) ? $order_details[$i]['is_delivery_charge_returnable'] : "";
         $custom_charges = $order_details[$i]['custom_charges'];
         // print_r($order_details[$i]);
@@ -5751,7 +5761,8 @@ function is_usps_shipping_enabled($settings = null)
 
 /**
  * Validate that a ZIP is a real US ZIP via USPS City/State API.
- * When USPS credentials are missing, only format is checked (caller should already enforce format).
+ * When USPS credentials are missing, or Addresses API license is not approved yet,
+ * only format is checked (caller should already enforce format).
  *
  * @return array error (bool), message, city, state, zipcode, skipped (bool)
  */
@@ -5769,6 +5780,7 @@ function validate_us_zipcode_via_usps($pincode)
         ];
     }
 
+    $zip5 = substr(preg_replace('/\D/', '', $pincode), 0, 5);
     $t = &get_instance();
     $t->load->library(['usps']);
 
@@ -5778,12 +5790,25 @@ function validate_us_zipcode_via_usps($pincode)
             'message' => 'USPS credentials not configured; ZIP format accepted.',
             'city' => '',
             'state' => '',
-            'zipcode' => substr(preg_replace('/\D/', '', $pincode), 0, 5),
+            'zipcode' => $zip5,
             'skipped' => true,
         ];
     }
 
     $result = $t->usps->validate_zipcode($pincode);
+
+    // Until Addresses API license is approved, accept US ZIP format only.
+    if (!empty($result['access_denied'])) {
+        return [
+            'error' => false,
+            'message' => 'USPS Addresses API license pending; ZIP format accepted.',
+            'city' => '',
+            'state' => '',
+            'zipcode' => $zip5,
+            'skipped' => true,
+        ];
+    }
+
     $result['skipped'] = false;
     return $result;
 }

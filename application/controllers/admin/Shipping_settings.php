@@ -88,6 +88,16 @@ class Shipping_settings extends CI_Controller
                     'usps_consumer_secret' => $this->input->post('usps_consumer_secret', true),
                     'usps_origin_zip' => $this->input->post('usps_origin_zip', true),
                     'usps_environment' => $this->input->post('usps_environment', true),
+                    'usps_crid' => $this->input->post('usps_crid', true),
+                    'usps_mid' => $this->input->post('usps_mid', true),
+                    'usps_manifest_mid' => $this->input->post('usps_manifest_mid', true),
+                    'usps_account_number' => $this->input->post('usps_account_number', true),
+                    'usps_from_first_name' => $this->input->post('usps_from_first_name', true),
+                    'usps_from_last_name' => $this->input->post('usps_from_last_name', true),
+                    'usps_from_street' => $this->input->post('usps_from_street', true),
+                    'usps_from_city' => $this->input->post('usps_from_city', true),
+                    'usps_from_state' => $this->input->post('usps_from_state', true),
+                    'usps_from_phone' => $this->input->post('usps_from_phone', true),
                     'temp' => $this->input->post('temp', true),
                 );
 

@@ -52,18 +52,19 @@
                         City <span class="text-danger">*</span>
                     </label>
                     <div class="col-md-6">
-                        <select class="form-control select2"
+                        <select class="form-control city_list"
                                 name="city"
                                 id="city"
-                                style="width:100%">
-                            <option value="">--- Select City ---</option>
-                            <?php foreach ($city as $row) { ?>
-                                <option value="<?= $row['id'] ?>"
-                                    <?= (!empty($fetched_data[0]['city_id']) && $row['id'] == $fetched_data[0]['city_id']) ? 'selected' : '' ?>>
-                                    <?= $row['name'] ?>
+                                style="width:100%"
+                                required>
+                            <option value="">Search City</option>
+                            <?php if (!empty($selected_city['id'])) { ?>
+                                <option value="<?= (int) $selected_city['id'] ?>" selected>
+                                    <?= htmlspecialchars($selected_city['name'] ?? '') ?>
                                 </option>
                             <?php } ?>
                         </select>
+                        <small class="text-muted">Start typing to search cities</small>
                     </div>
                 </div>
 

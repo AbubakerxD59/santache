@@ -214,6 +214,48 @@
                                     <?php } ?>
                                 <?php } ?>
 
+                                <?php if (isset($shiprocket_settings['usps_shipping_method']) && $shiprocket_settings['usps_shipping_method'] == 1) { ?>
+                                    <?php if (isset($items[0]['product_type']) && $items[0]['product_type'] != 'digital_product') { ?>
+                                        <tr>
+                                            <th class="w-10px">USPS Shipping</th>
+                                            <td>
+                                                <div class="mb-2">
+                                                    <strong>Tracking #:</strong>
+                                                    <?= !empty($order_detls[0]['usps_tracking_number']) ? htmlspecialchars($order_detls[0]['usps_tracking_number']) : '<span class="text-muted">Not created</span>' ?>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <strong>Status:</strong>
+                                                    <span id="usps_tracking_status_text"><?= !empty($order_detls[0]['usps_tracking_status']) ? htmlspecialchars($order_detls[0]['usps_tracking_status']) : '—' ?></span>
+                                                    <?php if (!empty($order_detls[0]['usps_tracking_updated_at'])) { ?>
+                                                        <small class="text-muted">(updated <?= htmlspecialchars($order_detls[0]['usps_tracking_updated_at']) ?>)</small>
+                                                    <?php } ?>
+                                                </div>
+                                                <div class="d-flex flex-wrap">
+                                                    <?php if (empty($order_detls[0]['usps_tracking_number'])) { ?>
+                                                        <button type="button" class="btn btn-primary btn-xs mr-1"
+                                                            data-toggle="modal" data-target="#usps_label_modal">
+                                                            <i class="fas fa-tags"></i> Create USPS Label
+                                                        </button>
+                                                    <?php } else { ?>
+                                                        <?php if (!empty($order_detls[0]['usps_label_url'])) { ?>
+                                                            <a href="<?= base_url($order_detls[0]['usps_label_url']) ?>" target="_blank" class="btn btn-primary btn-xs mr-1">
+                                                                <i class="fas fa-download"></i> Download Label
+                                                            </a>
+                                                        <?php } ?>
+                                                        <a href="https://tools.usps.com/go/TrackConfirmAction_input?origTrackNum=<?= urlencode($order_detls[0]['usps_tracking_number']) ?>" target="_blank" class="btn btn-info btn-xs mr-1">
+                                                            <i class="fas fa-external-link-alt"></i> Track on USPS
+                                                        </a>
+                                                        <button type="button" class="btn btn-success btn-xs update_usps_tracking"
+                                                            data-order_id="<?= (int) $order_detls[0]['id'] ?>">
+                                                            <i class="fas fa-sync-alt"></i> Update Tracking
+                                                        </button>
+                                                    <?php } ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php } ?>
+                                <?php } ?>
+
                                 <tr>
                                     <th class="w-10px">Items</th>
                                     <td>
@@ -1111,3 +1153,39 @@
             </div>
         </div>
     </div>
+
+<!-- USPS Label Modal -->
+<div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" id="usps_label_modal"
+    data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create USPS Label</h5>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="usps_label_form" method="POST" action="<?= base_url('admin/orders/create_usps_label'); ?>">
+                    <input type="hidden" name="order_id" value="<?= (int) $order_detls[0]['id'] ?>" />
+                    <div class="form-group">
+                        <label for="usps_parcel_weight">Parcel Weight (kg) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="parcel_weight" id="usps_parcel_weight" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_parcel_length">Length (cm)</label>
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_length" id="usps_parcel_length" />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_parcel_breadth">Breadth / Width (cm)</label>
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_breadth" id="usps_parcel_breadth" />
+                    </div>
+                    <div class="form-group">
+                        <label for="usps_parcel_height">Height (cm)</label>
+                        <input type="number" step="0.01" min="0" class="form-control" name="parcel_height" id="usps_parcel_height" />
+                    </div>
+                    <small class="text-muted d-block mb-3">Uses USPS Ground Advantage. Missing dimensions default to 6×6×6 in.</small>
+                    <button type="submit" class="btn btn-success" id="usps_label_submit_btn">Create Label</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

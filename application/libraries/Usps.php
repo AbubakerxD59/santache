@@ -13,6 +13,17 @@ class Usps
     private $mail_class = 'USPS_GROUND_ADVANTAGE';
     private $base_url = 'https://apis.usps.com';
     private $token_cache_file = '';
+    private $payment_token_cache_file = '';
+    private $crid = '';
+    private $mid = '';
+    private $manifest_mid = '';
+    private $account_number = '';
+    private $from_first_name = '';
+    private $from_last_name = '';
+    private $from_street = '';
+    private $from_city = '';
+    private $from_state = '';
+    private $from_phone = '';
 
     /** Default package size in inches when product dims are missing */
     const DEFAULT_LENGTH = 6;
@@ -37,6 +48,17 @@ class Usps
         $this->price_type = 'RETAIL';
         $this->mail_class = 'USPS_GROUND_ADVANTAGE';
 
+        $this->crid = isset($settings['usps_crid']) ? trim($settings['usps_crid']) : '';
+        $this->mid = isset($settings['usps_mid']) ? trim($settings['usps_mid']) : '';
+        $this->manifest_mid = isset($settings['usps_manifest_mid']) ? trim($settings['usps_manifest_mid']) : $this->mid;
+        $this->account_number = isset($settings['usps_account_number']) ? trim($settings['usps_account_number']) : '';
+        $this->from_first_name = isset($settings['usps_from_first_name']) ? trim($settings['usps_from_first_name']) : '';
+        $this->from_last_name = isset($settings['usps_from_last_name']) ? trim($settings['usps_from_last_name']) : '';
+        $this->from_street = isset($settings['usps_from_street']) ? trim($settings['usps_from_street']) : '';
+        $this->from_city = isset($settings['usps_from_city']) ? trim($settings['usps_from_city']) : '';
+        $this->from_state = isset($settings['usps_from_state']) ? strtoupper(trim($settings['usps_from_state'])) : '';
+        $this->from_phone = isset($settings['usps_from_phone']) ? preg_replace('/\D/', '', $settings['usps_from_phone']) : '';
+
         if (isset($settings['usps_environment']) && strtolower($settings['usps_environment']) === 'tem') {
             $this->base_url = 'https://apis-tem.usps.com';
         }
@@ -46,6 +68,7 @@ class Usps
             @mkdir($cache_dir, 0755, true);
         }
         $this->token_cache_file = $cache_dir . '/usps_oauth_token.json';
+        $this->payment_token_cache_file = $cache_dir . '/usps_payment_token.json';
     }
 
     public function get_credentials()
@@ -57,12 +80,28 @@ class Usps
             'price_type' => $this->price_type,
             'mail_class' => $this->mail_class,
             'base_url' => $this->base_url,
+            'crid' => $this->crid,
+            'mid' => $this->mid,
+            'manifest_mid' => $this->manifest_mid,
+            'account_number' => $this->account_number,
         ];
     }
 
     public function is_configured()
     {
         return $this->has_api_credentials() && !empty($this->origin_zip);
+    }
+
+    public function is_label_configured()
+    {
+        return $this->is_configured()
+            && !empty($this->crid)
+            && !empty($this->mid)
+            && !empty($this->account_number)
+            && !empty($this->from_street)
+            && !empty($this->from_city)
+            && !empty($this->from_state)
+            && !empty($this->from_first_name);
     }
 
     /**
@@ -77,7 +116,7 @@ class Usps
      * Verify ZIP is a real US ZIP Code via USPS City/State API.
      *
      * @param string $zipcode e.g. 10001 or 10001-1234
-     * @return array error, message, city, state, zipcode
+     * @return array error, message, city, state, zipcode, access_denied (optional)
      */
     public function validate_zipcode($zipcode)
     {
@@ -127,10 +166,28 @@ class Usps
             $api_message = $response['error']['errors'][0]['detail'];
         } elseif (isset($response['message'])) {
             $api_message = $response['message'];
+        } elseif (is_string($response['error'] ?? null)) {
+            $api_message = $response['error'];
+        }
+
+        // Addresses API license / access controls — allow callers to soft-skip
+        if ($this->is_addresses_api_access_denied($http, $api_message, $response)) {
+            return [
+                'error' => true,
+                'access_denied' => true,
+                'message' => !empty($api_message)
+                    ? $api_message
+                    : 'USPS Addresses API access is not authorized.',
+                'city' => '',
+                'state' => '',
+                'zipcode' => $zip5,
+                'raw' => $response,
+            ];
         }
 
         return [
             'error' => true,
+            'access_denied' => false,
             'message' => !empty($api_message)
                 ? $api_message
                 : 'Please enter a valid US ZIP Code.',
@@ -139,6 +196,37 @@ class Usps
             'zipcode' => $zip5,
             'raw' => $response,
         ];
+    }
+
+    /**
+     * Detect USPS Addresses API Access Controls / missing license responses.
+     */
+    private function is_addresses_api_access_denied($http, $message, $response = [])
+    {
+        if (in_array(intval($http), [401, 403], true)) {
+            return true;
+        }
+
+        $haystack = strtolower(trim((string) $message));
+        if ($haystack === '' && is_array($response)) {
+            $haystack = strtolower(json_encode($response));
+        }
+
+        $needles = [
+            'addresses api access controls',
+            'addresses api license',
+            'not authorized for access to addresses',
+            'add an addresses api license',
+            'api licenses',
+        ];
+
+        foreach ($needles as $needle) {
+            if ($haystack !== '' && strpos($haystack, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -355,48 +443,447 @@ class Usps
         ];
     }
 
+    /**
+     * Payment authorization token required for Labels API.
+     */
+    public function get_payment_authorization_token()
+    {
+        if (!$this->is_label_configured()) {
+            return [
+                'error' => true,
+                'message' => 'USPS label settings incomplete. Add CRID, MID, EPS account number, and ship-from address in shipping settings.',
+                'token' => '',
+            ];
+        }
+
+        $cached = $this->read_cached_payment_token();
+        if (!empty($cached)) {
+            return [
+                'error' => false,
+                'token' => $cached,
+            ];
+        }
+
+        $role = [
+            'roleName' => 'PAYER',
+            'CRID' => $this->crid,
+            'MID' => $this->mid,
+            'manifestMID' => $this->manifest_mid,
+            'accountType' => 'EPS',
+            'accountNumber' => $this->account_number,
+        ];
+        $owner = $role;
+        $owner['roleName'] = 'LABEL_OWNER';
+
+        $url = $this->base_url . '/payments/v3/payment-authorization';
+        $response = $this->curl($url, 'POST', json_encode(['roles' => [$role, $owner]]));
+        $token = '';
+        if (!empty($response['paymentAuthorizationToken'])) {
+            $token = $response['paymentAuthorizationToken'];
+        }
+
+        if (empty($token)) {
+            $message = 'Failed to obtain USPS payment authorization token.';
+            if (!empty($response['error']['message'])) {
+                $message = $response['error']['message'];
+            } elseif (!empty($response['message'])) {
+                $message = $response['message'];
+            }
+            return [
+                'error' => true,
+                'message' => $message,
+                'token' => '',
+                'raw' => $response,
+            ];
+        }
+
+        $this->write_cached_payment_token($token, 28800);
+        return [
+            'error' => false,
+            'token' => $token,
+            'raw' => $response,
+        ];
+    }
+
+    /**
+     * Create a domestic USPS Ground Advantage label.
+     *
+     * @param array $data to_address, weight_kg/weight_lb, length_cm/etc, package_value
+     */
+    public function create_label($data)
+    {
+        if (!$this->is_label_configured()) {
+            return [
+                'error' => true,
+                'message' => 'USPS label settings incomplete. Add CRID, MID, EPS account, and ship-from address.',
+            ];
+        }
+
+        $payment = $this->get_payment_authorization_token();
+        if (!empty($payment['error'])) {
+            return $payment;
+        }
+
+        $to = isset($data['to_address']) && is_array($data['to_address']) ? $data['to_address'] : [];
+        $weight_lb = isset($data['weight_lb'])
+            ? floatval($data['weight_lb'])
+            : $this->kg_to_lb(isset($data['weight_kg']) ? $data['weight_kg'] : 0);
+
+        $length = isset($data['length_in']) ? floatval($data['length_in']) : $this->cm_to_inch(isset($data['length_cm']) ? $data['length_cm'] : 0);
+        $width = isset($data['width_in']) ? floatval($data['width_in']) : $this->cm_to_inch(isset($data['width_cm']) ? $data['width_cm'] : (isset($data['breadth_cm']) ? $data['breadth_cm'] : 0));
+        $height = isset($data['height_in']) ? floatval($data['height_in']) : $this->cm_to_inch(isset($data['height_cm']) ? $data['height_cm'] : 0);
+        if ($length <= 0) {
+            $length = self::DEFAULT_LENGTH;
+        }
+        if ($width <= 0) {
+            $width = self::DEFAULT_WIDTH;
+        }
+        if ($height <= 0) {
+            $height = self::DEFAULT_HEIGHT;
+        }
+
+        $to_zip = isset($to['ZIPCode']) ? preg_replace('/\D/', '', $to['ZIPCode']) : '';
+        if (strlen($to_zip) > 5) {
+            $to_zip = substr($to_zip, 0, 5);
+        }
+
+        $payload = [
+            'imageInfo' => [
+                'imageType' => 'PDF',
+                'labelType' => '4X6LABEL',
+                'receiptOption' => 'NONE',
+                'suppressPostage' => false,
+                'suppressMailDate' => false,
+                'returnLabel' => false,
+            ],
+            'toAddress' => [
+                'firstName' => isset($to['firstName']) ? $to['firstName'] : 'Customer',
+                'lastName' => isset($to['lastName']) ? $to['lastName'] : '',
+                'streetAddress' => isset($to['streetAddress']) ? $to['streetAddress'] : '',
+                'secondaryAddress' => isset($to['secondaryAddress']) ? $to['secondaryAddress'] : '',
+                'city' => isset($to['city']) ? $to['city'] : '',
+                'state' => isset($to['state']) ? $this->normalize_state($to['state']) : '',
+                'ZIPCode' => $to_zip,
+            ],
+            'fromAddress' => [
+                'firstName' => $this->from_first_name,
+                'lastName' => $this->from_last_name !== '' ? $this->from_last_name : 'Store',
+                'streetAddress' => $this->from_street,
+                'city' => $this->from_city,
+                'state' => $this->normalize_state($this->from_state),
+                'ZIPCode' => $this->origin_zip,
+            ],
+            'packageDescription' => [
+                'mailClass' => $this->mail_class,
+                'rateIndicator' => 'SP',
+                'weightUOM' => 'lb',
+                'weight' => $weight_lb,
+                'dimensionsUOM' => 'in',
+                'length' => $length,
+                'width' => $width,
+                'height' => $height,
+                'processingCategory' => 'MACHINABLE',
+                'mailingDate' => date('Y-m-d'),
+                'destinationEntryFacilityType' => 'NONE',
+                'packageOptions' => [
+                    'packageValue' => isset($data['package_value']) ? floatval($data['package_value']) : 0,
+                ],
+            ],
+        ];
+
+        if (!empty($this->from_phone)) {
+            $payload['fromAddress']['phone'] = $this->from_phone;
+        }
+        if (!empty($to['phone'])) {
+            $payload['toAddress']['phone'] = preg_replace('/\D/', '', $to['phone']);
+        }
+
+        $url = $this->base_url . '/labels/v3/label';
+        $raw = $this->curl_raw($url, 'POST', json_encode($payload), [
+            'X-Payment-Authorization-Token: ' . $payment['token'],
+            'Accept: application/json, multipart/form-data, application/pdf, */*',
+        ]);
+
+        $parsed = $this->parse_label_response($raw['body'], $raw['content_type'], $raw['http_code']);
+        if (!empty($parsed['error'])) {
+            return $parsed;
+        }
+
+        return [
+            'error' => false,
+            'message' => 'Label created successfully',
+            'tracking_number' => $parsed['tracking_number'],
+            'postage' => $parsed['postage'],
+            'label_pdf' => $parsed['label_pdf'],
+            'metadata' => $parsed['metadata'],
+            'tracking_url' => !empty($parsed['tracking_number'])
+                ? ('https://tools.usps.com/go/TrackConfirmAction_input?origTrackNum=' . urlencode($parsed['tracking_number']))
+                : '',
+        ];
+    }
+
+    /**
+     * Track a package by tracking number.
+     */
+    public function track($tracking_number, $expand = 'DETAIL')
+    {
+        $tracking_number = trim((string) $tracking_number);
+        if ($tracking_number === '') {
+            return [
+                'error' => true,
+                'message' => 'Tracking number is required.',
+            ];
+        }
+
+        if (!$this->has_api_credentials()) {
+            return [
+                'error' => true,
+                'message' => 'USPS API credentials are not configured.',
+            ];
+        }
+
+        $url = $this->base_url . '/tracking/v3/tracking/' . rawurlencode($tracking_number) . '?expand=' . rawurlencode($expand);
+        $response = $this->curl($url, 'GET');
+        $http = isset($response['apiStatus']) ? intval($response['apiStatus']) : 0;
+
+        if ($http >= 200 && $http < 300) {
+            $status = '';
+            if (!empty($response['statusSummary'])) {
+                $status = $response['statusSummary'];
+            } elseif (!empty($response['status'])) {
+                $status = $response['status'];
+            } elseif (!empty($response['TrackResults']['TrackInfo']['TrackSummary'])) {
+                $status = $response['TrackResults']['TrackInfo']['TrackSummary'];
+            }
+
+            return [
+                'error' => false,
+                'message' => 'Tracking retrieved successfully',
+                'status' => $status,
+                'status_category' => isset($response['statusCategory']) ? $response['statusCategory'] : '',
+                'tracking_number' => isset($response['trackingNumber']) ? $response['trackingNumber'] : $tracking_number,
+                'events' => isset($response['trackingEvents']) ? $response['trackingEvents'] : [],
+                'raw' => $response,
+            ];
+        }
+
+        $message = 'Unable to retrieve USPS tracking status.';
+        if (!empty($response['error']['message'])) {
+            $message = $response['error']['message'];
+        } elseif (!empty($response['message'])) {
+            $message = $response['message'];
+        }
+
+        return [
+            'error' => true,
+            'message' => $message,
+            'raw' => $response,
+        ];
+    }
+
+    public function get_from_address()
+    {
+        return [
+            'firstName' => $this->from_first_name,
+            'lastName' => $this->from_last_name,
+            'streetAddress' => $this->from_street,
+            'city' => $this->from_city,
+            'state' => $this->from_state,
+            'ZIPCode' => $this->origin_zip,
+            'phone' => $this->from_phone,
+        ];
+    }
+
+    private function normalize_state($state)
+    {
+        $state = trim((string) $state);
+        if (strlen($state) === 2) {
+            return strtoupper($state);
+        }
+
+        $map = [
+            'alabama' => 'AL', 'alaska' => 'AK', 'arizona' => 'AZ', 'arkansas' => 'AR', 'california' => 'CA',
+            'colorado' => 'CO', 'connecticut' => 'CT', 'delaware' => 'DE', 'florida' => 'FL', 'georgia' => 'GA',
+            'hawaii' => 'HI', 'idaho' => 'ID', 'illinois' => 'IL', 'indiana' => 'IN', 'iowa' => 'IA',
+            'kansas' => 'KS', 'kentucky' => 'KY', 'louisiana' => 'LA', 'maine' => 'ME', 'maryland' => 'MD',
+            'massachusetts' => 'MA', 'michigan' => 'MI', 'minnesota' => 'MN', 'mississippi' => 'MS', 'missouri' => 'MO',
+            'montana' => 'MT', 'nebraska' => 'NE', 'nevada' => 'NV', 'new hampshire' => 'NH', 'new jersey' => 'NJ',
+            'new mexico' => 'NM', 'new york' => 'NY', 'north carolina' => 'NC', 'north dakota' => 'ND', 'ohio' => 'OH',
+            'oklahoma' => 'OK', 'oregon' => 'OR', 'pennsylvania' => 'PA', 'rhode island' => 'RI', 'south carolina' => 'SC',
+            'south dakota' => 'SD', 'tennessee' => 'TN', 'texas' => 'TX', 'utah' => 'UT', 'vermont' => 'VT',
+            'virginia' => 'VA', 'washington' => 'WA', 'west virginia' => 'WV', 'wisconsin' => 'WI', 'wyoming' => 'WY',
+            'district of columbia' => 'DC',
+        ];
+        $key = strtolower($state);
+        return isset($map[$key]) ? $map[$key] : strtoupper(substr($state, 0, 2));
+    }
+
+    private function parse_label_response($body, $content_type, $http_code)
+    {
+        if ($http_code < 200 || $http_code >= 300) {
+            $decoded = json_decode($body, true);
+            $message = 'USPS label creation failed.';
+            if (is_array($decoded)) {
+                if (!empty($decoded['error']['message'])) {
+                    $message = $decoded['error']['message'];
+                } elseif (!empty($decoded['message'])) {
+                    $message = $decoded['message'];
+                }
+            } elseif (is_string($body) && $body !== '') {
+                $message = substr(strip_tags($body), 0, 300);
+            }
+            return [
+                'error' => true,
+                'message' => $message,
+                'raw_body' => $body,
+            ];
+        }
+
+        $metadata = null;
+        $pdf = '';
+
+        if (stripos((string) $content_type, 'multipart/') !== false && preg_match('/boundary="?([^";]+)"?/i', $content_type, $m)) {
+            $boundary = $m[1];
+            $parts = preg_split('/--' . preg_quote($boundary, '/') . '(?:--)?\r?\n/', $body);
+            foreach ($parts as $part) {
+                if (trim($part) === '' || trim($part) === '--') {
+                    continue;
+                }
+                $split = preg_split("/\r?\n\r?\n/", $part, 2);
+                if (count($split) < 2) {
+                    continue;
+                }
+                $headers = $split[0];
+                $content = rtrim($split[1], "\r\n");
+                if (stripos($headers, 'application/json') !== false || stripos($headers, 'name="labelMetadata"') !== false) {
+                    $metadata = json_decode($content, true);
+                } elseif (stripos($headers, 'application/pdf') !== false || stripos($headers, 'labelImage') !== false) {
+                    $pdf = $content;
+                }
+            }
+        } else {
+            $decoded = json_decode($body, true);
+            if (is_array($decoded)) {
+                $metadata = $decoded;
+            } elseif (strpos($body, '%PDF') === 0) {
+                $pdf = $body;
+            }
+        }
+
+        $tracking = '';
+        $postage = 0;
+        if (is_array($metadata)) {
+            if (!empty($metadata['trackingNumber'])) {
+                $tracking = $metadata['trackingNumber'];
+            }
+            if (isset($metadata['postage'])) {
+                $postage = floatval($metadata['postage']);
+            }
+        }
+
+        if ($tracking === '' && $pdf === '') {
+            return [
+                'error' => true,
+                'message' => 'USPS label response did not include tracking number or label image.',
+                'raw_body' => substr((string) $body, 0, 500),
+            ];
+        }
+
+        return [
+            'error' => false,
+            'tracking_number' => $tracking,
+            'postage' => $postage,
+            'label_pdf' => $pdf,
+            'metadata' => $metadata,
+        ];
+    }
+
     public function curl($url, $method = 'GET', $data = [])
+    {
+        $raw = $this->curl_raw($url, $method, $data);
+        $decoded = (!empty($raw['body'])) ? json_decode($raw['body'], true) : [];
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+        $decoded['apiStatus'] = $raw['http_code'];
+        return $decoded;
+    }
+
+    private function curl_raw($url, $method = 'GET', $data = [], $extra_headers = [])
     {
         $token = $this->generate_token();
         if (empty($token)) {
             return [
-                'error' => [
-                    'message' => 'Failed to obtain USPS OAuth token. Check Consumer Key and Secret.',
-                ],
+                'http_code' => 0,
+                'content_type' => '',
+                'body' => json_encode([
+                    'error' => [
+                        'message' => 'Failed to obtain USPS OAuth token. Check Consumer Key and Secret.',
+                    ],
+                ]),
             ];
         }
 
-        $ch = curl_init();
-        $headers = [
+        $headers = array_merge([
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json',
             'Accept: application/json',
-        ];
+        ], $extra_headers);
+
+        $ch = curl_init();
         $curl_options = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_HEADER => 0,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT => 60,
         ];
         if (strtolower($method) == 'post') {
             $curl_options[CURLOPT_POST] = 1;
             $curl_options[CURLOPT_POSTFIELDS] = $data;
         } else {
-            $curl_options[CURLOPT_CUSTOMREQUEST] = 'GET';
+            $curl_options[CURLOPT_CUSTOMREQUEST] = strtoupper($method);
         }
         curl_setopt_array($ch, $curl_options);
 
-        $result = curl_exec($ch);
+        $body = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         curl_close($ch);
 
-        $decoded = (!empty($result)) ? json_decode($result, true) : [];
-        if (!is_array($decoded)) {
-            $decoded = [];
+        return [
+            'http_code' => $http_code,
+            'content_type' => $content_type,
+            'body' => $body === false ? '' : $body,
+        ];
+    }
+
+    private function read_cached_payment_token()
+    {
+        if (!is_file($this->payment_token_cache_file)) {
+            return '';
         }
-        $decoded['apiStatus'] = $http_code;
-        return $decoded;
+        $raw = @file_get_contents($this->payment_token_cache_file);
+        if (empty($raw)) {
+            return '';
+        }
+        $data = json_decode($raw, true);
+        if (empty($data['payment_token']) || empty($data['expires_at'])) {
+            return '';
+        }
+        if (time() >= (intval($data['expires_at']) - 300)) {
+            return '';
+        }
+        return $data['payment_token'];
+    }
+
+    private function write_cached_payment_token($token, $expires_in)
+    {
+        $payload = json_encode([
+            'payment_token' => $token,
+            'expires_at' => time() + max(60, intval($expires_in)),
+        ]);
+        @file_put_contents($this->payment_token_cache_file, $payload);
     }
 
     private function read_cached_token()
@@ -412,7 +899,6 @@ class Usps
         if (empty($data['access_token']) || empty($data['expires_at'])) {
             return '';
         }
-        // Refresh 5 minutes early
         if (time() >= (intval($data['expires_at']) - 300)) {
             return '';
         }
