@@ -284,13 +284,13 @@ class Usps
         }
 
         $url = $this->base_url . '/oauth2/v3/token';
-        // Request labels/payments scopes when USPS has granted those products to the app.
-        // Without a Labels & Payments product grant, tokens stay on Public Access I only.
+        // Do NOT send a custom scope list. USPS returns the app's full default product
+        // scopes when scope is omitted. Requesting unauthorized scopes (e.g. labels)
+        // can narrow the token and drop prices access needed for dynamic rates.
         $payload = json_encode([
             'client_id' => $this->consumer_key,
             'client_secret' => $this->consumer_secret,
             'grant_type' => 'client_credentials',
-            'scope' => 'addresses prices labels payments tracking pickup',
         ]);
 
         $curl = curl_init();
@@ -503,7 +503,7 @@ class Usps
             }
             return [
                 'error' => true,
-                'message' => $message,
+                'message' => $this->enrich_scope_error($message),
                 'rate' => 0,
                 'raw' => $response,
             ];

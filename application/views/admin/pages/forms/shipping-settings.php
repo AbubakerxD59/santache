@@ -125,7 +125,7 @@
                                 <div class="row mt-3">
                                     <div class="col-12">
                                         <h5>USPS OAuth Token</h5>
-                                        <small class="text-muted">Stored in <code>settings</code> as <code>usps_oauth_token</code>. Save Consumer Key/Secret first, then generate.</small>
+                                        <small class="text-muted">Stored in <code>settings</code> as <code>usps_oauth_token</code>. Save Consumer Key/Secret first, then generate. Token uses your app’s default USPS product scopes (do not request labels scopes here).</small>
                                     </div>
                                     <div class="form-group col-12">
                                         <label class="mb-2" for="usps_oauth_token_display">Current Access Token</label>
