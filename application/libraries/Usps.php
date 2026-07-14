@@ -265,10 +265,13 @@ class Usps
         }
 
         $url = $this->base_url . '/oauth2/v3/token';
+        // Request labels/payments scopes when USPS has granted those products to the app.
+        // Without a Labels & Payments product grant, tokens stay on Public Access I only.
         $payload = json_encode([
             'client_id' => $this->consumer_key,
             'client_secret' => $this->consumer_secret,
             'grant_type' => 'client_credentials',
+            'scope' => 'addresses prices labels payments tracking',
         ]);
 
         $curl = curl_init();
@@ -299,6 +302,37 @@ class Usps
         }
 
         return $token;
+    }
+
+    /**
+     * Clear cached OAuth / payment tokens (use after USPS grants new API products).
+     */
+    public function clear_token_cache()
+    {
+        if (!empty($this->token_cache_file) && is_file($this->token_cache_file)) {
+            @unlink($this->token_cache_file);
+        }
+        if (!empty($this->payment_token_cache_file) && is_file($this->payment_token_cache_file)) {
+            @unlink($this->payment_token_cache_file);
+        }
+    }
+
+    private function enrich_scope_error($message)
+    {
+        $message = trim((string) $message);
+        if ($message === '') {
+            $message = 'Insufficient OAuth scope';
+        }
+        if (stripos($message, 'scope') === false && stripos($message, 'unauthorized') === false) {
+            return $message;
+        }
+
+        $this->clear_token_cache();
+
+        return $message . ' Your USPS Developer app likely only has “Public Access I”. '
+            . 'Request Payments v3 + Domestic Labels v3 for this app (include CRID, MID, EPS account), '
+            . 'then refresh claims at https://cop.usps.com. '
+            . 'Service request: https://emailus.usps.com/s/web-tools-inquiry';
     }
 
     /**
@@ -488,10 +522,12 @@ class Usps
                 $message = $response['error']['message'];
             } elseif (!empty($response['message'])) {
                 $message = $response['message'];
+            } elseif (!empty($response['error_description'])) {
+                $message = $response['error_description'];
             }
             return [
                 'error' => true,
-                'message' => $message,
+                'message' => $this->enrich_scope_error($message),
                 'token' => '',
                 'raw' => $response,
             ];
@@ -589,6 +625,16 @@ class Usps
                     'packageValue' => isset($data['package_value']) ? floatval($data['package_value']) : 0,
                 ],
             ],
+            'senderInfo' => [
+                'CRID' => $this->crid,
+                'MID' => $this->mid,
+                'manifestMID' => $this->manifest_mid,
+            ],
+            'paymentInfo' => [
+                'paymentMethod' => 'USPS_ACCOUNT',
+                'accountType' => 'EPS',
+                'accountNumber' => $this->account_number,
+            ],
         ];
 
         if (!empty($this->from_phone)) {
@@ -599,13 +645,20 @@ class Usps
         }
 
         $url = $this->base_url . '/labels/v3/label';
-        $raw = $this->curl_raw($url, 'POST', json_encode($payload), [
+        $extra_headers = [
             'X-Payment-Authorization-Token: ' . $payment['token'],
             'Accept: application/json, multipart/form-data, application/pdf, */*',
-        ]);
+        ];
+        if (!empty($this->crid)) {
+            $extra_headers[] = 'X-USPS-CRID: ' . $this->crid;
+        }
+        $raw = $this->curl_raw($url, 'POST', json_encode($payload), $extra_headers);
 
         $parsed = $this->parse_label_response($raw['body'], $raw['content_type'], $raw['http_code']);
         if (!empty($parsed['error'])) {
+            if (!empty($parsed['message'])) {
+                $parsed['message'] = $this->enrich_scope_error($parsed['message']);
+            }
             return $parsed;
         }
 
